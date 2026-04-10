@@ -1,0 +1,51 @@
+# Secrets / env files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+dist/
+build/
+.eggs/
+*.egg-info/
+venv/
+.venv/
+ENV/
+env/
+
+# .NET
+bin/
+obj/
+
+# Java
+*.class
+*.jar
+
+# Logs
+*.log
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
