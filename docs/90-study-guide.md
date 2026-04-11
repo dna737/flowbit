@@ -73,4 +73,4 @@ This file holds pre-build learning only; it is not required at runtime.
 - REST APIs — building and consuming them
 - Terminal comfort — logs, process management, env vars
 
-Everything else (Kafka, Redis, Prometheus) you learn as you build.
+Everything else (Kafka, Prometheus) you learn as you build.

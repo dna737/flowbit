@@ -10,7 +10,6 @@ import (
 type Config struct {
 	APIAddr          string
 	DatabaseURL      string
-	RedisURL         string
 	KafkaBrokers     []string
 	KafkaTopicJobs   string
 	KafkaUsername    string
@@ -24,7 +23,6 @@ func Load() (Config, error) {
 	cfg := Config{
 		APIAddr:          getenv("API_ADDR", ":8080"),
 		DatabaseURL:      getenv("DATABASE_URL", ""),
-		RedisURL:         getenv("REDIS_URL", ""),
 		KafkaBrokers:     splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs:   getenv("KAFKA_TOPIC_JOBS", "jobs"),
 		KafkaUsername:    getenv("KAFKA_USERNAME", ""),
@@ -40,7 +38,6 @@ func Load() (Config, error) {
 	if len(cfg.KafkaBrokers) == 0 {
 		return Config{}, errors.New("KAFKA_BROKERS is required")
 	}
-	// REDIS_URL is optional here: only cmd/smoke needs it. API and worker use Postgres + Kafka only.
 	return cfg, nil
 }
 

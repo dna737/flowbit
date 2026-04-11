@@ -22,5 +22,5 @@ func main() {
 		log.Fatalf("smoke checks failed: %v", err)
 	}
 
-	log.Println("smoke checks passed: postgres + kafka + redis")
+	log.Println("smoke checks passed: postgres + kafka")
 }
