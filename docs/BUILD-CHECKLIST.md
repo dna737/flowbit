@@ -23,6 +23,7 @@ Related docs: [Vision and demo](00-vision-and-demo.md) · [Stack](20-stack-and-d
 - [ ] **API:** `GET /jobs/:id` returns the job record (including status) for an existing id; 404 for unknown id.
 - [ ] **Worker:** Consumes from the same topic/partition strategy you defined; processes a **hardcoded dummy** job type (no AI).
 - [ ] **E2E:** Submit job via API → message in Kafka → worker runs → PostgreSQL shows terminal success state for that job id **without** manual DB edits.
+- [ ] **Automated tests:** From `backend/`, `go test ./...` passes (unit tests; no managed secrets required).
 
 ---
 
