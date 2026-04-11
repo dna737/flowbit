@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"flowbit/backend/internal/config"
@@ -13,14 +12,10 @@ import (
 	"flowbit/backend/internal/queue"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
-	if strings.TrimSpace(cfg.RedisURL) == "" {
-		return errors.New("REDIS_URL is required for smoke checks (api and worker do not need Redis)")
-	}
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		if err := checkPostgres(ctx, cfg); err != nil {
@@ -31,12 +26,6 @@ func Run(ctx context.Context, cfg config.Config) error {
 	g.Go(func() error {
 		if err := checkKafka(ctx, cfg); err != nil {
 			return fmt.Errorf("kafka check failed: %w", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		if err := checkRedis(ctx, cfg); err != nil {
-			return fmt.Errorf("redis check failed: %w", err)
 		}
 		return nil
 	})
@@ -74,20 +63,6 @@ func checkKafka(ctx context.Context, cfg config.Config) error {
 	defer cancel()
 
 	return kafka.PublishJob(testCtx, writer, queueSmokeMessage())
-}
-
-func checkRedis(ctx context.Context, cfg config.Config) error {
-	opt, err := redis.ParseURL(cfg.RedisURL)
-	if err != nil {
-		return err
-	}
-	client := redis.NewClient(opt)
-	defer client.Close()
-
-	if err := client.Ping(ctx).Err(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func queueSmokeMessage() queue.JobMessage {

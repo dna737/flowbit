@@ -1,7 +1,7 @@
 # Flowbit — Vision and demo
 
 **AI-Powered Distributed Job Scheduler — Build Document**  
-Go · Kafka · PostgreSQL · Redis · Gemini API · React
+Go · Kafka · PostgreSQL · Gemini API · React
 
 See also: [Architecture](10-architecture.md) · [Stack and deployment](20-stack-and-deployment.md) · [Build checklist](BUILD-CHECKLIST.md)
 
@@ -13,7 +13,7 @@ A backend infrastructure system where a user types a plain English command, an A
 
 This is not a CRUD app. It is the category of tool that powers Celery, Sidekiq, AWS SQS, and Temporal — built from scratch, deployed on real cloud infrastructure, and accessible via a public URL.
 
-**One-line pitch (use once in talks and README):** “I built Flowbit — a distributed task queue from scratch using Go, Kafka, Redis, and PostgreSQL — with an AI dispatcher that converts plain English into jobs, and a live pipeline visualizer. It’s deployed. Here’s the link.”
+**One-line pitch (use once in talks and README):** “I built Flowbit — a distributed task queue from scratch using Go, Kafka, and PostgreSQL — with an AI dispatcher that converts plain English into jobs, and a live pipeline visualizer. It’s deployed. Here’s the link.”
 
 ---
 

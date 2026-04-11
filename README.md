@@ -1,19 +1,18 @@
 # Flowbit
 
-Backend-first implementation of the Flowbit scheduler using managed services (Neon Postgres + Upstash Kafka/Redis).
+Backend-first implementation of the Flowbit scheduler using managed services (Neon Postgres + Redpanda Cloud Kafka).
 
 ## Prerequisites
 
 - Go 1.24+
 - Managed service credentials for:
   - Neon Postgres
-  - Upstash Kafka
-  - Upstash Redis (only if you run `go run ./cmd/smoke`; API and worker do not need Redis)
+  - Redpanda Cloud (Kafka-compatible)
 
 ## Environment setup
 
 1. Copy `.env.example` to `.env`.
-2. Fill in `DATABASE_URL` and `KAFKA_*` for API/worker. Add `REDIS_URL` when running smoke checks.
+2. Fill in `DATABASE_URL` and `KAFKA_*` for API, worker, and smoke checks.
 
 PowerShell example:
 
@@ -23,7 +22,7 @@ Copy-Item .env.example .env
 
 ## Block 1 smoke checks
 
-Run connectivity checks for Postgres (`SELECT 1`), Kafka (produce message), and Redis (`PING`):
+Run connectivity checks for Postgres (`SELECT 1`) and Kafka (produce message):
 
 ```powershell
 cd backend
@@ -31,7 +30,7 @@ go run ./cmd/smoke
 ```
 
 Expected output contains:
-- `smoke checks passed: postgres + kafka + redis`
+- `smoke checks passed: postgres + kafka`
 
 ## Block 2 run flow
 
@@ -77,7 +76,7 @@ go test ./...
 
 This runs unit tests only (HTTP handlers with fakes, repo with pgxmock, worker job logic, Kafka TLS defaults, config defaults). No cloud credentials required.
 
-**Kafka TLS:** Managed brokers (e.g. Upstash) need TLS. That is the default (`KAFKA_USE_TLS` unset or `true`). Set `KAFKA_USE_TLS=false` only for local plaintext Kafka.
+**Kafka TLS:** Managed brokers (e.g. Redpanda Cloud) need TLS. That is the default (`KAFKA_USE_TLS` unset or `true`). Set `KAFKA_USE_TLS=false` only for local plaintext Kafka.
 
 **Optional integration test (Docker):** Spins up Postgres via Testcontainers, applies schema, and round-trips `CreateJob` / `GetJobByID`.
 
