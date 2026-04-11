@@ -10,7 +10,7 @@ Related docs: [Vision and demo](00-vision-and-demo.md) · [Stack](20-stack-and-d
 
 - [ ] **Neon:** `jobs` and `dead_letter_queue` tables exist per schema you will use in code; a one-off SQL or migration has been applied.
 - [ ] **Postgres connectivity:** From Go (or your chosen verifier), open a connection using `DATABASE_URL` and run a trivial query (e.g. `SELECT 1`).
-- [ ] **Redpanda Cloud:** Topic `jobs` exists; bootstrap URL + credentials in `.env`; a minimal producer can publish a test message to `jobs` and succeed.
+- [ ] **Aiven Kafka:** Topic `jobs` exists; Service URI + TLS certificates (service.cert, service.key, ca.pem) in `.env`; a minimal producer can publish a test message to `jobs` and succeed.
 - [ ] **Grafana Cloud:** Account created; hosted Prometheus `remote_write` URL (or equivalent) captured in `.env` if you will push metrics in Block 6 — or explicitly deferred with a note in `60-observability-and-runbook.md` so Block 1 still has a clear “observability prereq” state.
 - [ ] **Secrets:** All of the above live in a local `.env` (or secret store); nothing required for Block 2 is still “TODO in dashboard.”
 

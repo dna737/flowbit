@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	config.LoadDotenv()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)

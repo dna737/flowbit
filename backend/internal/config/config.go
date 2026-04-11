@@ -12,10 +12,11 @@ type Config struct {
 	DatabaseURL      string
 	KafkaBrokers     []string
 	KafkaTopicJobs   string
-	KafkaUsername    string
-	KafkaPassword    string
+	// Aiven uses TLS certificate authentication (service.cert, service.key, ca.pem)
+	KafkaCertFile    string // Path to service.cert
+	KafkaKeyFile     string // Path to service.key
+	KafkaCAFile      string // Path to ca.pem
 	KafkaConsumerGrp string
-	KafkaUseTLS      bool
 	ApplyMigrations  bool
 }
 
@@ -25,10 +26,11 @@ func Load() (Config, error) {
 		DatabaseURL:      getenv("DATABASE_URL", ""),
 		KafkaBrokers:     splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs:   getenv("KAFKA_TOPIC_JOBS", "jobs"),
-		KafkaUsername:    getenv("KAFKA_USERNAME", ""),
-		KafkaPassword:    getenv("KAFKA_PASSWORD", ""),
+		// Aiven TLS certificate files
+		KafkaCertFile:    getenv("KAFKA_CERT_FILE", "service.cert"),
+		KafkaKeyFile:     getenv("KAFKA_KEY_FILE", "service.key"),
+		KafkaCAFile:      getenv("KAFKA_CA_FILE", "ca.pem"),
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
-		KafkaUseTLS:      getenvBool("KAFKA_USE_TLS", true),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
 	}
 

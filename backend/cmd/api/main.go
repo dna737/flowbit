@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	config.LoadDotenv()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
@@ -37,13 +38,16 @@ func main() {
 	}
 
 	jobsRepo := repo.NewJobsRepo(pool)
-	writer := kafka.NewWriter(kafka.Config{
-		Brokers:    cfg.KafkaBrokers,
-		Topic:      cfg.KafkaTopicJobs,
-		User:       cfg.KafkaUsername,
-		Pass:       cfg.KafkaPassword,
-		DisableTLS: !cfg.KafkaUseTLS,
+	writer, err := kafka.NewWriter(kafka.Config{
+		Brokers:  cfg.KafkaBrokers,
+		Topic:    cfg.KafkaTopicJobs,
+		CertFile: cfg.KafkaCertFile,
+		KeyFile:  cfg.KafkaKeyFile,
+		CAFile:   cfg.KafkaCAFile,
 	})
+	if err != nil {
+		log.Fatalf("kafka writer error: %v", err)
+	}
 	defer writer.Close()
 
 	srv := &api.Server{

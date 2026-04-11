@@ -1,18 +1,19 @@
 # Flowbit
 
-Backend-first implementation of the Flowbit scheduler using managed services (Neon Postgres + Redpanda Cloud Kafka).
+Backend-first implementation of the Flowbit scheduler using managed services (Neon Postgres + Aiven Kafka).
 
 ## Prerequisites
 
 - Go 1.24+
 - Managed service credentials for:
   - Neon Postgres
-  - Redpanda Cloud (Kafka-compatible)
+  - Aiven (Kafka - download service.cert, service.key, ca.pem from Aiven Console)
 
 ## Environment setup
 
-1. Copy `.env.example` to `.env`.
+1. Copy `.env.example` to `.env` at the **repository root** (or in `backend/`; both are loaded).
 2. Fill in `DATABASE_URL` and `KAFKA_*` for API, worker, and smoke checks.
+3. `go run ./cmd/...` from `backend/` automatically loads `../.env` then `./.env` so you do not need to export variables manually.
 
 PowerShell example:
 
@@ -76,7 +77,7 @@ go test ./...
 
 This runs unit tests only (HTTP handlers with fakes, repo with pgxmock, worker job logic, Kafka TLS defaults, config defaults). No cloud credentials required.
 
-**Kafka TLS:** Managed brokers (e.g. Redpanda Cloud) need TLS. That is the default (`KAFKA_USE_TLS` unset or `true`). Set `KAFKA_USE_TLS=false` only for local plaintext Kafka.
+**Kafka TLS:** Aiven Kafka requires TLS with certificate authentication. Place your `service.cert`, `service.key`, and `ca.pem` files in the project root or specify their paths via environment variables (use `../service.key` etc. when `go run` cwd is `backend/`). If smoke fails with **not a PEM private key**, `service.key` is missing or truncated—re-download it from Aiven (Kafka service → **Connection information**), next to `service.cert`.
 
 **Optional integration test (Docker):** Spins up Postgres via Testcontainers, applies schema, and round-trips `CreateJob` / `GetJobByID`.
 

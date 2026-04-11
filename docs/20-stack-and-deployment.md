@@ -9,7 +9,7 @@ See also: [Observability and runbook](60-observability-and-runbook.md) · [Build
 | Technology | Role | Where it runs |
 | ---------- | ---- | ------------- |
 | Go | API server + worker pool | Railway or Render |
-| Kafka | Job queue / transport layer | Redpanda Cloud (managed) |
+| Kafka | Job queue / transport layer | Aiven (managed) |
 | PostgreSQL | Durable job state store | Neon (managed) |
 | Gemini API | NL → structured job parsing | Google AI Studio credits |
 | React | Live pipeline visualizer UI | Vercel |
@@ -25,7 +25,7 @@ Every service is managed and free-tier. Nothing runs only on localhost.
 | Component | Platform |
 | --------- | -------- |
 | Go API server + workers | Railway or Render |
-| Kafka | Redpanda Cloud — managed, free tier, real URLs |
+| Kafka | Aiven — managed, free tier, TLS certificate auth |
 | PostgreSQL | Neon — managed, free tier |
 | React UI | Vercel |
 | Prometheus + Grafana | Grafana Cloud — free tier, public dashboard URL |
@@ -39,7 +39,7 @@ Copy values from each provider into a local `.env` (or your secret store). Check
 | Variable / secret | Source | Used by |
 | ----------------- | ------ | ------- |
 | PostgreSQL connection string (Neon) | Neon dashboard | API, worker |
-| Kafka bootstrap + credentials | Redpanda Cloud | API producer, worker consumer |
+| Kafka bootstrap + TLS certs | Aiven Console | API producer, worker consumer |
 | Gemini API key | Google AI Studio | Dispatcher |
 | Grafana Cloud Prometheus `remote_write` (or scrape config) | Grafana Cloud | Block 6 metrics |
 | Public URLs / deployment secrets | Railway, Render, Vercel | Deploy |

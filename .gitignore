@@ -4,6 +4,11 @@
 !.env.example
 !.env.sample
 
+# Aiven Kafka TLS certificates (never commit these!)
+*.cert
+*.key
+*.pem
+
 # Node
 node_modules/
 npm-debug.log*

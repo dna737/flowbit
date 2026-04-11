@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"flowbit/backend/internal/config"
@@ -12,24 +13,18 @@ import (
 	"flowbit/backend/internal/queue"
 
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		if err := checkPostgres(ctx, cfg); err != nil {
-			return fmt.Errorf("postgres check failed: %w", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		if err := checkKafka(ctx, cfg); err != nil {
-			return fmt.Errorf("kafka check failed: %w", err)
-		}
-		return nil
-	})
-	return g.Wait()
+	if err := checkPostgres(ctx, cfg); err != nil {
+		return fmt.Errorf("postgres check failed: %w", err)
+	}
+	log.Println("smoke: postgres OK (Neon)")
+	if err := checkKafka(ctx, cfg); err != nil {
+		return fmt.Errorf("kafka check failed: %w", err)
+	}
+	log.Println("smoke: kafka OK (produce to topic)")
+	return nil
 }
 
 func checkPostgres(ctx context.Context, cfg config.Config) error {
@@ -50,13 +45,16 @@ func checkPostgres(ctx context.Context, cfg config.Config) error {
 }
 
 func checkKafka(ctx context.Context, cfg config.Config) error {
-	writer := kafka.NewWriter(kafka.Config{
-		Brokers:    cfg.KafkaBrokers,
-		Topic:      cfg.KafkaTopicJobs,
-		User:       cfg.KafkaUsername,
-		Pass:       cfg.KafkaPassword,
-		DisableTLS: !cfg.KafkaUseTLS,
+	writer, err := kafka.NewWriter(kafka.Config{
+		Brokers:  cfg.KafkaBrokers,
+		Topic:    cfg.KafkaTopicJobs,
+		CertFile: cfg.KafkaCertFile,
+		KeyFile:  cfg.KafkaKeyFile,
+		CAFile:   cfg.KafkaCAFile,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to create kafka writer: %w", err)
+	}
 	defer writer.Close()
 
 	testCtx, cancel := context.WithTimeout(ctx, 10*time.Second)

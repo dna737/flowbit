@@ -7,7 +7,7 @@ See also: [Stack and deployment](20-stack-and-deployment.md) · [Build checklist
 ## Block 1 — Cloud services setup
 
 - Create Neon project → copy connection string → run SQL to create `jobs` and `dead_letter_queue` tables
-- Create Redpanda Cloud free cluster at cloud.redpanda.com → create topic `jobs` → get bootstrap URL + SASL credentials (SCRAM-SHA-256) → copy broker URL + username + password to `.env`
+- Create Aiven Kafka service at console.aiven.io → create topic `jobs` → download TLS certificates (service.cert, service.key, ca.pem) from the Overview page → copy Service URI to `.env`
 - Create Grafana Cloud account → spin up hosted Prometheus endpoint → copy `remote_write` URL
 - Add all credentials to a local `.env` file → verify Go can connect to each service
 
