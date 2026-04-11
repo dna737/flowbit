@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	config.LoadDotenv()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
@@ -37,14 +38,17 @@ func main() {
 	}
 
 	jobsRepo := repo.NewJobsRepo(pool)
-	reader := kafka.NewReader(kafka.Config{
-		Brokers:    cfg.KafkaBrokers,
-		Topic:      cfg.KafkaTopicJobs,
-		GroupID:    cfg.KafkaConsumerGrp,
-		User:       cfg.KafkaUsername,
-		Pass:       cfg.KafkaPassword,
-		DisableTLS: !cfg.KafkaUseTLS,
+	reader, err := kafka.NewReader(kafka.Config{
+		Brokers:  cfg.KafkaBrokers,
+		Topic:    cfg.KafkaTopicJobs,
+		GroupID:  cfg.KafkaConsumerGrp,
+		CertFile: cfg.KafkaCertFile,
+		KeyFile:  cfg.KafkaKeyFile,
+		CAFile:   cfg.KafkaCAFile,
 	})
+	if err != nil {
+		log.Fatalf("kafka reader error: %v", err)
+	}
 	defer reader.Close()
 
 	log.Printf("worker consuming topic %q as group %q", cfg.KafkaTopicJobs, cfg.KafkaConsumerGrp)
