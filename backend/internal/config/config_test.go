@@ -15,15 +15,15 @@ func TestLoad_KafkaCertFiles_defaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Default cert file paths should be set
-	if cfg.KafkaCertFile != "service.cert" {
-		t.Fatalf("expected KafkaCertFile default 'service.cert', got %q", cfg.KafkaCertFile)
+	// TLS cert files default to empty (opt-in, not opt-out)
+	if cfg.KafkaCertFile != "" {
+		t.Fatalf("expected KafkaCertFile default '', got %q", cfg.KafkaCertFile)
 	}
-	if cfg.KafkaKeyFile != "service.key" {
-		t.Fatalf("expected KafkaKeyFile default 'service.key', got %q", cfg.KafkaKeyFile)
+	if cfg.KafkaKeyFile != "" {
+		t.Fatalf("expected KafkaKeyFile default '', got %q", cfg.KafkaKeyFile)
 	}
-	if cfg.KafkaCAFile != "ca.pem" {
-		t.Fatalf("expected KafkaCAFile default 'ca.pem', got %q", cfg.KafkaCAFile)
+	if cfg.KafkaCAFile != "" {
+		t.Fatalf("expected KafkaCAFile default '', got %q", cfg.KafkaCAFile)
 	}
 }
 

@@ -19,22 +19,34 @@ type Writer = kafkago.Writer
 type Reader = kafkago.Reader
 
 type Config struct {
-	Brokers []string
-	Topic   string
-	GroupID string
+	Brokers  []string
+	Topic    string
+	GroupID  string
 	// Aiven uses TLS certificate authentication
-	CertFile string // Path to service.cert
-	KeyFile  string // Path to service.key
-	CAFile   string // Path to ca.pem
+	CertFile  string      // Path to service.cert
+	KeyFile   string      // Path to service.key
+	CAFile    string      // Path to ca.pem
+	TLSConfig *tls.Config // Pre-built TLS config; if set, skips file loading
 }
 
-// TLSEnabled reports whether TLS certificate files are configured.
+// TLSEnabled reports whether TLS is configured (pre-built or via cert files).
 func (c Config) TLSEnabled() bool {
-	return c.CertFile != "" && c.KeyFile != "" && c.CAFile != ""
+	return c.TLSConfig != nil || (c.CertFile != "" && c.KeyFile != "" && c.CAFile != "")
 }
 
-// loadTLSConfig creates a TLS configuration for Aiven certificate authentication.
-func loadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
+// resolveTLS returns the TLS config to use: pre-built if set, otherwise loaded from files.
+func resolveTLS(cfg Config) (*tls.Config, error) {
+	if cfg.TLSConfig != nil {
+		return cfg.TLSConfig, nil
+	}
+	if cfg.CertFile != "" && cfg.KeyFile != "" && cfg.CAFile != "" {
+		return LoadTLSConfig(cfg.CertFile, cfg.KeyFile, cfg.CAFile)
+	}
+	return nil, nil
+}
+
+// LoadTLSConfig creates a TLS configuration for Aiven certificate authentication.
+func LoadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
 	certPEM, err := os.ReadFile(certFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read client certificate: %w", err)
@@ -51,7 +63,6 @@ func loadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
 		return nil, fmt.Errorf("failed to load client certificate: %w", err)
 	}
 
-	// Load CA certificate (ca.pem)
 	caCert, err := os.ReadFile(caFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA certificate: %w", err)
@@ -70,18 +81,9 @@ func loadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
 }
 
 func NewWriter(cfg Config) (*kafkago.Writer, error) {
-	var tlsConfig *tls.Config
-	var err error
-
-	if cfg.TLSEnabled() {
-		tlsConfig, err = loadTLSConfig(cfg.CertFile, cfg.KeyFile, cfg.CAFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load TLS config: %w", err)
-		}
-	}
-
-	transport := &kafkago.Transport{
-		TLS: tlsConfig,
+	tlsConfig, err := resolveTLS(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TLS config: %w", err)
 	}
 
 	return &kafkago.Writer{
@@ -89,22 +91,20 @@ func NewWriter(cfg Config) (*kafkago.Writer, error) {
 		Topic:        cfg.Topic,
 		RequiredAcks: kafkago.RequireAll,
 		BatchTimeout: 200 * time.Millisecond,
-		Transport:    transport,
+		Transport:    &kafkago.Transport{TLS: tlsConfig},
 	}, nil
 }
 
 func NewReader(cfg Config) (*kafkago.Reader, error) {
+	tlsConfig, err := resolveTLS(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TLS config: %w", err)
+	}
+
 	dialer := &kafkago.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
-	}
-
-	if cfg.TLSEnabled() {
-		tlsConfig, err := loadTLSConfig(cfg.CertFile, cfg.KeyFile, cfg.CAFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load TLS config: %w", err)
-		}
-		dialer.TLS = tlsConfig
+		TLS:       tlsConfig,
 	}
 
 	return kafkago.NewReader(kafkago.ReaderConfig{

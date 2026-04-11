@@ -13,7 +13,12 @@ import (
 )
 
 func main() {
-	TOPIC_NAME := "jobs"
+	broker := os.Getenv("KAFKA_BROKERS")
+	if broker == "" {
+		log.Fatal("KAFKA_BROKERS env var required (e.g. your-service.aivencloud.com:PORT)")
+	}
+
+	topicName := "jobs"
 
 	// Load client certificate (service.cert + service.key)
 	keypair, err := tls.LoadX509KeyPair("service.cert", "service.key")
@@ -28,27 +33,23 @@ func main() {
 	}
 
 	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(caCert)
-	if !ok {
+	if !caCertPool.AppendCertsFromPEM(caCert) {
 		log.Fatalf("Failed to parse CA certificate file")
 	}
 
-	dialer := &kafka.Dialer{
-		Timeout:   10 * time.Second,
-		DualStack: true,
-		TLS: &tls.Config{
-			Certificates: []tls.Certificate{keypair},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-		},
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{keypair},
+		RootCAs:      caCertPool,
+		MinVersion:   tls.VersionTLS12,
 	}
 
 	// Init producer
-	producer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"flowbit-aiven-kafka-flowbit.b.aivencloud.com:26159"},
-		Topic:   TOPIC_NAME,
-		Dialer:  dialer,
-	})
+	producer := &kafka.Writer{
+		Addr:      kafka.TCP(broker),
+		Topic:     topicName,
+		Transport: &kafka.Transport{TLS: tlsConfig},
+	}
+	defer producer.Close()
 
 	// Produce 100 messages
 	for i := 0; i < 100; i++ {
@@ -61,6 +62,4 @@ func main() {
 		}
 		time.Sleep(time.Second)
 	}
-
-	producer.Close()
 }

@@ -26,10 +26,10 @@ func Load() (Config, error) {
 		DatabaseURL:      getenv("DATABASE_URL", ""),
 		KafkaBrokers:     splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs:   getenv("KAFKA_TOPIC_JOBS", "jobs"),
-		// Aiven TLS certificate files
-		KafkaCertFile:    getenv("KAFKA_CERT_FILE", "service.cert"),
-		KafkaKeyFile:     getenv("KAFKA_KEY_FILE", "service.key"),
-		KafkaCAFile:      getenv("KAFKA_CA_FILE", "ca.pem"),
+		// Aiven TLS certificate files — empty by default (TLS opt-in)
+		KafkaCertFile:    getenv("KAFKA_CERT_FILE", ""),
+		KafkaKeyFile:     getenv("KAFKA_KEY_FILE", ""),
+		KafkaCAFile:      getenv("KAFKA_CA_FILE", ""),
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
 	}
