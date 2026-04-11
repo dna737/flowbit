@@ -45,13 +45,19 @@ func checkPostgres(ctx context.Context, cfg config.Config) error {
 }
 
 func checkKafka(ctx context.Context, cfg config.Config) error {
-	writer, err := kafka.NewWriter(kafka.Config{
+	kafkaCfg := kafka.Config{
 		Brokers:  cfg.KafkaBrokers,
 		Topic:    cfg.KafkaTopicJobs,
 		CertFile: cfg.KafkaCertFile,
 		KeyFile:  cfg.KafkaKeyFile,
 		CAFile:   cfg.KafkaCAFile,
-	})
+	}
+	if !kafkaCfg.TLSEnabled() {
+		log.Println("smoke: kafka skipped (no TLS certs configured — set KAFKA_CERT_FILE/KEY_FILE/CA_FILE for Aiven)")
+		return nil
+	}
+
+	writer, err := kafka.NewWriter(kafkaCfg)
 	if err != nil {
 		return fmt.Errorf("failed to create kafka writer: %w", err)
 	}

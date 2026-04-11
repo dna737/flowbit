@@ -12,7 +12,12 @@ import (
 )
 
 func main() {
-	TOPIC_NAME := "jobs"
+	broker := os.Getenv("KAFKA_BROKERS")
+	if broker == "" {
+		log.Fatal("KAFKA_BROKERS env var required (e.g. your-service.aivencloud.com:PORT)")
+	}
+
+	topicName := "jobs"
 
 	// Load client certificate (service.cert + service.key)
 	keypair, err := tls.LoadX509KeyPair("service.cert", "service.key")
@@ -27,8 +32,7 @@ func main() {
 	}
 
 	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(caCert)
-	if !ok {
+	if !caCertPool.AppendCertsFromPEM(caCert) {
 		log.Fatalf("Failed to parse CA certificate file")
 	}
 
@@ -44,22 +48,20 @@ func main() {
 
 	// Init consumer
 	consumer := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"flowbit-aiven-kafka-flowbit.b.aivencloud.com:26159"},
-		Topic:   TOPIC_NAME,
+		Brokers: []string{broker},
+		Topic:   topicName,
 		Dialer:  dialer,
 	})
 
-	log.Printf("Consumer started, waiting for messages on topic %q...", TOPIC_NAME)
+	log.Printf("Consumer started, waiting for messages on topic %q...", topicName)
 
 	for {
 		message, err := consumer.ReadMessage(context.Background())
-
 		if err != nil {
 			log.Printf("Could not read message: %s", err)
 			time.Sleep(time.Second)
 			continue
 		}
-
 		log.Printf("Got message using SSL: %s", message.Value)
 	}
 }
