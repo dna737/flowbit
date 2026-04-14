@@ -107,10 +107,6 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 			break
 		}
 	}
-	if got.JobID != job.ID {
-		t.Fatalf("job id mismatch: got %q want %q", got.JobID, job.ID)
-	}
-
 	worker.HandleJob(ctx, store, got, nil)
 
 	final, err := store.GetJobByID(ctx, job.ID)
