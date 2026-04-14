@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -26,10 +27,11 @@ func Load() (Config, error) {
 		DatabaseURL:      getenv("DATABASE_URL", ""),
 		KafkaBrokers:     splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs:   getenv("KAFKA_TOPIC_JOBS", "jobs"),
-		// Aiven TLS certificate files — empty by default (TLS opt-in)
-		KafkaCertFile:    getenv("KAFKA_CERT_FILE", ""),
-		KafkaKeyFile:     getenv("KAFKA_KEY_FILE", ""),
-		KafkaCAFile:      getenv("KAFKA_CA_FILE", ""),
+		// Aiven TLS certificate files — empty by default (TLS opt-in).
+		// Relative paths are resolved against the directory of the loaded .env file.
+		KafkaCertFile:    resolveFromDotenv(getenv("KAFKA_CERT_FILE", "")),
+		KafkaKeyFile:     resolveFromDotenv(getenv("KAFKA_KEY_FILE", "")),
+		KafkaCAFile:      resolveFromDotenv(getenv("KAFKA_CA_FILE", "")),
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
 	}
@@ -41,6 +43,15 @@ func Load() (Config, error) {
 		return Config{}, errors.New("KAFKA_BROKERS is required")
 	}
 	return cfg, nil
+}
+
+// resolveFromDotenv resolves a relative path against dotenvDir so that cert
+// paths in .env work regardless of the working directory at runtime.
+func resolveFromDotenv(path string) string {
+	if path == "" || filepath.IsAbs(path) || dotenvDir == "" {
+		return path
+	}
+	return filepath.Join(dotenvDir, path)
 }
 
 func getenv(key, fallback string) string {
