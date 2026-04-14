@@ -13,6 +13,7 @@ import (
 	"flowbit/backend/internal/queue"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
@@ -41,7 +42,37 @@ func checkPostgres(ctx context.Context, cfg config.Config) error {
 	if one != 1 {
 		return errors.New("SELECT 1 did not return 1")
 	}
+
+	if cfg.ApplyMigrations {
+		if err := db.EnsureSchema(ctx, pool); err != nil {
+			return fmt.Errorf("apply schema: %w", err)
+		}
+		log.Println("smoke: schema applied (APPLY_MIGRATIONS=true)")
+	}
+
+	if err := verifyCoreTables(ctx, pool, cfg.ApplyMigrations); err != nil {
+		return err
+	}
+	log.Println("smoke: tables jobs + dead_letter_queue present")
 	return nil
+}
+
+func verifyCoreTables(ctx context.Context, pool *pgxpool.Pool, migrationsRan bool) error {
+	var n int
+	err := pool.QueryRow(ctx, `
+		SELECT count(*)::int FROM information_schema.tables
+		WHERE table_schema = 'public' AND table_name IN ('jobs', 'dead_letter_queue')
+	`).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("table check: %w", err)
+	}
+	if n == 2 {
+		return nil
+	}
+	if migrationsRan {
+		return fmt.Errorf("expected public.jobs and public.dead_letter_queue after migrations (found %d/2)", n)
+	}
+	return fmt.Errorf("missing jobs/dead_letter_queue (found %d/2); set APPLY_MIGRATIONS=true or run backend/internal/db/sql/schema.sql in Neon SQL Editor", n)
 }
 
 func checkKafka(ctx context.Context, cfg config.Config) error {
@@ -63,6 +94,7 @@ func checkKafka(ctx context.Context, cfg config.Config) error {
 	}
 	defer writer.Close()
 
+	log.Printf("smoke: publishing to kafka topic %q", cfg.KafkaTopicJobs)
 	testCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

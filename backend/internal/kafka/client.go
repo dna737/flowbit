@@ -27,6 +27,8 @@ type Config struct {
 	KeyFile   string      // Path to service.key
 	CAFile    string      // Path to ca.pem
 	TLSConfig *tls.Config // Pre-built TLS config; if set, skips file loading
+	// StartOffset for a new consumer group: 0 = kafka-go default (FirstOffset). Use kafkago.LastOffset to read only new records.
+	StartOffset int64
 }
 
 // TLSEnabled reports whether TLS is configured (pre-built or via cert files).
@@ -107,14 +109,18 @@ func NewReader(cfg Config) (*kafkago.Reader, error) {
 		TLS:       tlsConfig,
 	}
 
-	return kafkago.NewReader(kafkago.ReaderConfig{
+	rc := kafkago.ReaderConfig{
 		Brokers:  cfg.Brokers,
 		GroupID:  cfg.GroupID,
 		Topic:    cfg.Topic,
 		MinBytes: 1,
 		MaxBytes: 10e6,
 		Dialer:   dialer,
-	}), nil
+	}
+	if cfg.StartOffset != 0 {
+		rc.StartOffset = cfg.StartOffset
+	}
+	return kafkago.NewReader(rc), nil
 }
 
 func PublishJob(ctx context.Context, writer *kafkago.Writer, msg queue.JobMessage) error {
