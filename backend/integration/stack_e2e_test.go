@@ -63,7 +63,7 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 		CertFile:    cfg.KafkaCertFile,
 		KeyFile:     cfg.KafkaKeyFile,
 		CAFile:      cfg.KafkaCAFile,
-		StartOffset: kafkago.LastOffset,
+		StartOffset: kafkago.FirstOffset,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,21 +82,30 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = writer.Close() })
 
-	msg := queue.JobMessage{JobID: job.ID, JobType: job.JobType, Parameters: job.Parameters}
-	if err := kafka.PublishJob(ctx, writer, msg); err != nil {
+	jobMsg := queue.JobMessage{JobID: job.ID, JobType: job.JobType, Parameters: job.Parameters}
+	if err := kafka.PublishJob(ctx, writer, jobMsg); err != nil {
 		t.Fatal(err)
 	}
 
+	// Read from the beginning of the topic and scan for our job ID.
+	// Avoids the LastOffset race (group-join on remote Kafka can be slow).
 	readCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
-	kmsg, err := reader.ReadMessage(readCtx)
-	if err != nil {
-		t.Fatalf("read kafka: %v", err)
-	}
 
 	var got queue.JobMessage
-	if err := json.Unmarshal(kmsg.Value, &got); err != nil {
-		t.Fatal(err)
+	for {
+		kmsg, err := reader.ReadMessage(readCtx)
+		if err != nil {
+			t.Fatalf("read kafka: %v", err)
+		}
+		var m queue.JobMessage
+		if err := json.Unmarshal(kmsg.Value, &m); err != nil {
+			continue // skip unrelated messages
+		}
+		if m.JobID == job.ID {
+			got = m
+			break
+		}
 	}
 	if got.JobID != job.ID {
 		t.Fatalf("job id mismatch: got %q want %q", got.JobID, job.ID)
