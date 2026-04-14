@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,7 +20,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           # This pulls your version (1.26) directly from go.mod
-          go-version-file: 'go.mod'
+          go-version-file: 'backend/go.mod'
           cache: true
 
       - name: Install dependencies
