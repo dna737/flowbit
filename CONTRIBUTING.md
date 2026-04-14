@@ -1,6 +1,6 @@
 # Contributing to Flowbit
 
-This repository follows a PR-first workflow for all code changes.
+This repository supports both direct CLI-driven collaboration and pull request workflows.
 
 ## Default workflow
 
@@ -9,8 +9,8 @@ This repository follows a PR-first workflow for all code changes.
 3. Keep scope focused to one logical change.
 4. Run relevant validation before pushing:
    - Backend changes: `cd backend && go test ./...`
-5. Open a pull request targeting `main`.
-6. Include a concise summary and test plan in the PR body.
+5. If you use pull requests, target `main`.
+6. If you open a pull request, include a concise summary and test plan in the PR body.
 
 ## Branch naming
 
@@ -20,7 +20,7 @@ Use a descriptive branch name, for example:
 - `fix/worker-retry-backoff`
 - `chore/docs-pr-template`
 
-## Pull request checklist
+## Pull request checklist (optional)
 
 - [ ] Branch is dedicated to a single change
 - [ ] Base branch is `main`
