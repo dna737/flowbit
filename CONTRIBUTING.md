@@ -20,7 +20,7 @@ Use a descriptive branch name, for example:
 - `fix/worker-retry-backoff`
 - `chore/docs-pr-template`
 
-## Pull request checklist (optional)
+## Pull request checklist
 
 - [ ] Branch is dedicated to a single change
 - [ ] Base branch is `main`
