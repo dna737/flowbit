@@ -16,7 +16,7 @@ var dotenvDir string
 // The first successfully loaded file's directory is used to anchor relative
 // paths in the config.
 func LoadDotenv() {
-	for _, rel := range []string{"../.env", "../../.env"} {
+	for _, rel := range []string{".env", "../.env", "../../.env"} {
 		if err := godotenv.Load(rel); err == nil && dotenvDir == "" {
 			if abs, err := filepath.Abs(filepath.Dir(rel)); err == nil {
 				dotenvDir = abs
