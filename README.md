@@ -23,7 +23,7 @@ Copy-Item .env.example .env
 
 ## Block 1 smoke checks
 
-Run connectivity checks for Postgres (`SELECT 1`) and Kafka (produce message):
+Run connectivity checks for Postgres (`SELECT 1`), optional schema apply when `APPLY_MIGRATIONS=true`, verification that `jobs` and `dead_letter_queue` exist, and Kafka (produce message when TLS certs are set):
 
 ```powershell
 cd backend
@@ -31,6 +31,7 @@ go run ./cmd/smoke
 ```
 
 Expected output contains:
+- `smoke: tables jobs + dead_letter_queue present`
 - `smoke checks passed: postgres + kafka`
 
 ## Block 2 run flow
@@ -77,6 +78,16 @@ go test ./...
 
 This runs unit tests only (HTTP handlers with fakes, repo with pgxmock, worker job logic, Kafka TLS defaults, config defaults). No cloud credentials required.
 
+## Contribution workflow
+
+Flowbit uses a PR-first process:
+
+1. Create a dedicated branch from `main` for each change.
+2. Run relevant checks before pushing (backend minimum: `cd backend && go test ./...`).
+3. Open a PR targeting `main` and include summary + test plan.
+
+Detailed guidance: see `CONTRIBUTING.md`.
+
 **Kafka TLS:** Aiven Kafka requires TLS with certificate authentication. Place your `service.cert`, `service.key`, and `ca.pem` files in the project root or specify their paths via environment variables (use `../service.key` etc. when `go run` cwd is `backend/`). If smoke fails with **not a PEM private key**, `service.key` is missing or truncated—re-download it from Aiven (Kafka service → **Connection information**), next to `service.cert`.
 
 **Optional integration test (Docker):** Spins up Postgres via Testcontainers, applies schema, and round-trips `CreateJob` / `GetJobByID`.
@@ -87,4 +98,14 @@ $env:INTEGRATION=1
 go test -tags=integration -v ./integration/...
 ```
 
-**Optional managed E2E:** Same manual flow as Block 2, but script it in CI when `DATABASE_URL` and `KAFKA_*` secrets are present; skip the job when secrets are missing so PRs stay green.
+**Optional managed stack test (Neon + Kafka + worker, no HTTP):** Uses the same `.env` as smoke. Creates an `echo` job row, publishes to Kafka, consumes with a one-off group at `LastOffset`, runs `worker.HandleJob`, asserts `succeeded`.
+
+```powershell
+cd backend
+$env:E2E_STACK = "1"
+go test -tags=e2e -count=1 ./integration -run TestStack_echoJob_endToEnd -v
+```
+
+Skip when `E2E_STACK` is unset so `go test ./...` stays credential-free.
+
+**Block 2 manual E2E:** With `go run ./cmd/api` and `go run ./cmd/worker`, use the `curl` flow above; CI can script the same against a deployed URL when secrets exist.
