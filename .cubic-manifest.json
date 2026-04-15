@@ -1,0 +1,75 @@
+{
+  "manifestVersion": 1,
+  "pluginVersion": "1.3.2",
+  "method": "paste",
+  "installedAt": "2026-04-15T05:37:07.475Z",
+  "target": "claude",
+  "entries": [
+    {
+      "name": "check-pr-comments",
+      "type": "skill",
+      "file": "skills\\check-pr-comments\\SKILL.md",
+      "method": "paste"
+    },
+    {
+      "name": "codebase-context",
+      "type": "skill",
+      "file": "skills\\codebase-context\\SKILL.md",
+      "method": "paste"
+    },
+    {
+      "name": "cubic-loop",
+      "type": "skill",
+      "file": "skills\\cubic-loop\\SKILL.md",
+      "method": "paste"
+    },
+    {
+      "name": "review-patterns",
+      "type": "skill",
+      "file": "skills\\review-patterns\\SKILL.md",
+      "method": "paste"
+    },
+    {
+      "name": "run-review",
+      "type": "skill",
+      "file": "skills\\run-review\\SKILL.md",
+      "method": "paste"
+    },
+    {
+      "name": "comments",
+      "type": "command",
+      "file": "comments.md",
+      "method": "paste"
+    },
+    {
+      "name": "learnings",
+      "type": "command",
+      "file": "learnings.md",
+      "method": "paste"
+    },
+    {
+      "name": "run-review",
+      "type": "command",
+      "file": "run-review.md",
+      "method": "paste"
+    },
+    {
+      "name": "scan",
+      "type": "command",
+      "file": "scan.md",
+      "method": "paste"
+    },
+    {
+      "name": "wiki",
+      "type": "command",
+      "file": "wiki.md",
+      "method": "paste"
+    },
+    {
+      "name": "cubic",
+      "type": "mcp-config",
+      "file": "mcp-config",
+      "method": "paste"
+    }
+  ]
+}
