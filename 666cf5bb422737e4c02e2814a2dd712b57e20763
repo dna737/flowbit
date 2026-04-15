@@ -1,0 +1,25 @@
+package.json
+  50875bd08be9e707 2
+README.md
+  50875bd08be9e707 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "666cf5bb422737e4c02e2814a2dd712b57e20763",
+  "prompts": {
+    "50875bd08be9e707": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "79d137f0-636b-4bec-a4c8-9b7ccdf1b992",
+        "model": "default"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
