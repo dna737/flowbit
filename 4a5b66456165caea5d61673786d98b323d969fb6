@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "4a5b66456165caea5d61673786d98b323d969fb6",
+  "prompts": {
+    "50875bd08be9e707": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "79d137f0-636b-4bec-a4c8-9b7ccdf1b992",
+        "model": "default"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 1
+    }
+  }
+}
