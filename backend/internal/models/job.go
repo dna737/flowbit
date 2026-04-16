@@ -5,6 +5,7 @@ import "time"
 const (
 	JobStatusPending   = "pending"
 	JobStatusRunning   = "running"
+	JobStatusRetrying  = "retrying"
 	JobStatusSucceeded = "succeeded"
 	JobStatusFailed    = "failed"
 )

@@ -16,6 +16,15 @@ import (
 	"flowbit/backend/internal/worker"
 )
 
+// kafkaJobPublisher wraps a kafka.Writer so it satisfies worker.Publisher.
+type kafkaJobPublisher struct {
+	writer *kafka.Writer
+}
+
+func (p kafkaJobPublisher) PublishJob(ctx context.Context, msg queue.JobMessage) error {
+	return kafka.PublishJob(ctx, p.writer, msg)
+}
+
 func main() {
 	config.LoadDotenv()
 	cfg, err := config.Load()
@@ -38,6 +47,21 @@ func main() {
 	}
 
 	jobsRepo := repo.NewJobsRepo(pool)
+
+	writer, err := kafka.NewWriter(kafka.Config{
+		Brokers:  cfg.KafkaBrokers,
+		Topic:    cfg.KafkaTopicJobs,
+		CertFile: cfg.KafkaCertFile,
+		KeyFile:  cfg.KafkaKeyFile,
+		CAFile:   cfg.KafkaCAFile,
+	})
+	if err != nil {
+		log.Fatalf("kafka writer error: %v", err)
+	}
+	defer writer.Close()
+
+	pub := kafkaJobPublisher{writer: writer}
+
 	reader, err := kafka.NewReader(kafka.Config{
 		Brokers:  cfg.KafkaBrokers,
 		Topic:    cfg.KafkaTopicJobs,
@@ -77,6 +101,6 @@ func main() {
 			log.Printf("skip malformed message: %v", err)
 			continue
 		}
-		worker.HandleJob(ctx, jobsRepo, jobMsg, log.Printf)
+		worker.HandleJob(ctx, jobsRepo, pub, jobMsg, log.Printf)
 	}
 }

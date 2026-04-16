@@ -21,6 +21,15 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 )
 
+// workerPublisher wraps a kafka.Writer to satisfy worker.Publisher in e2e tests.
+type workerPublisher struct {
+	writer *kafka.Writer
+}
+
+func (p workerPublisher) PublishJob(ctx context.Context, msg queue.JobMessage) error {
+	return kafka.PublishJob(ctx, p.writer, msg)
+}
+
 // TestStack_echoJob_endToEnd exercises Neon + Aiven Kafka + worker.HandleJob in one process (no HTTP).
 // Requires DATABASE_URL, KAFKA_BROKERS, topic, and TLS cert paths in .env (same as cmd/smoke).
 func TestStack_echoJob_endToEnd(t *testing.T) {
@@ -111,7 +120,10 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 		t.Fatalf("job id mismatch: got %q want %q", got.JobID, job.ID)
 	}
 
-	worker.HandleJob(ctx, store, got, t.Logf)
+	// Pass writer as publisher so HandleJob can re-publish on failure.
+	// The echo job succeeds, so the publisher is not exercised here.
+	pub := workerPublisher{writer: writer}
+	worker.HandleJob(ctx, store, pub, got, t.Logf)
 
 	final, err := store.GetJobByID(ctx, job.ID)
 	if err != nil {

@@ -23,7 +23,9 @@ See also: [Architecture](10-architecture.md) · [Stack](20-stack-and-deployment.
 
 ## Implementation notes
 
-- **Retries:** Exponential backoff with optional jitter between attempts; document parameters here or in code.
-- **DLQ:** After three failed attempts, the job must not retry indefinitely; store enough context to inspect failures later.
+- **Retries:** `maxAttempts = 3` (0-based `Attempt` field in `queue.JobMessage`). On failure, if `Attempt < maxAttempts-1`, the worker marks the job `retrying` in Postgres and re-publishes with `Attempt+1`. On the final attempt (`Attempt == maxAttempts-1`), the job is marked `failed` and written to `dead_letter_queue`.
+- **Backoff (`ReadBackoff`):** `200ms × 2^n`, capped at 30s. Applied to Kafka *read* errors in the worker loop. Re-publish retries go back into the Kafka topic; the consumer group's natural re-delivery timing provides spacing between delivery attempts.
+- **DLQ:** After three failed attempts, the job lands in `dead_letter_queue` with `job_id`, `job_type`, `payload` (JSONB), and `error_message`. It is never retried from there automatically.
+- **Test job type:** `"fail"` always returns an error, used to drive the retry and DLQ paths in unit tests and demos without needing real infrastructure.
 
 Exact JSON schemas for job payloads and DB columns can be added when you implement.
