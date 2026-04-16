@@ -1,0 +1,49 @@
+backend/internal/queue/messages.go
+  d835fd81bf499fee 7
+backend/internal/worker/job_test.go
+  d835fd81bf499fee 13,54-71,74,76,84-87,91-93,95-130,133-151,153-158,161,163,165-166,175-176,180-182,186-188,191
+backend/cmd/worker/main.go
+  d835fd81bf499fee 19-27,50-64,104
+backend/internal/models/job.go
+  d835fd81bf499fee 8
+backend/internal/worker/job.go
+  d835fd81bf499fee 13-16,23-25,41-45,53,57-77,98-105,107,123-126
+  58e3621fcd41a86e 108-122
+backend/integration/stack_e2e_test.go
+  d835fd81bf499fee 24-27,29-31,123-126
+docs/30-scheduler.md
+  d835fd81bf499fee 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "523c98485adf0f2d138c8338a80f9d793f862fd7",
+  "prompts": {
+    "58e3621fcd41a86e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f967e02-05d2-4e41-aabc-37b93ecd2cb4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 793,
+      "total_deletions": 298,
+      "accepted_lines": 696,
+      "overriden_lines": 0
+    },
+    "d835fd81bf499fee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eeaf7dc6-f584-4491-a4eb-67f87357dcf2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 966,
+      "total_deletions": 197,
+      "accepted_lines": 345,
+      "overriden_lines": 1
+    }
+  }
+}
