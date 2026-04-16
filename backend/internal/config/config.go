@@ -19,6 +19,8 @@ type Config struct {
 	KafkaCAFile      string // Path to ca.pem
 	KafkaConsumerGrp string
 	ApplyMigrations  bool
+	GeminiAPIKey     string // from env GEMINI_API_KEY; empty disables POST /dispatch
+	GeminiModel      string // from env GEMINI_MODEL; defaults to gemini-1.5-flash
 }
 
 func Load() (Config, error) {
@@ -34,6 +36,8 @@ func Load() (Config, error) {
 		KafkaCAFile:      resolveFromDotenv(getenv("KAFKA_CA_FILE", "")),
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
+		GeminiAPIKey:     getenv("GEMINI_API_KEY", ""),
+		GeminiModel:      getenv("GEMINI_MODEL", "gemini-1.5-flash"),
 	}
 
 	if cfg.DatabaseURL == "" {

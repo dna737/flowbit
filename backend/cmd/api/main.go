@@ -12,6 +12,7 @@ import (
 	"flowbit/backend/internal/api"
 	"flowbit/backend/internal/config"
 	"flowbit/backend/internal/db"
+	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/kafka"
 	"flowbit/backend/internal/repo"
 )
@@ -50,9 +51,21 @@ func main() {
 	}
 	defer writer.Close()
 
+	var aiDispatcher api.AIDispatcher
+	if cfg.GeminiAPIKey != "" {
+		d, err := dispatcher.NewGeminiDispatcher(cfg.GeminiAPIKey, cfg.GeminiModel)
+		if err != nil {
+			log.Fatalf("gemini dispatcher error: %v", err)
+		}
+		aiDispatcher = d
+	} else {
+		log.Printf("GEMINI_API_KEY not set — POST /dispatch will return 501")
+	}
+
 	srv := &api.Server{
-		Store:     jobsRepo,
-		Publisher: kafkaJobPublisher{writer: writer},
+		Store:        jobsRepo,
+		Publisher:    kafkaJobPublisher{writer: writer},
+		AIDispatcher: aiDispatcher,
 	}
 	mux := http.NewServeMux()
 	srv.Mount(mux)

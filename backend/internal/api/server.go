@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/models"
 	"flowbit/backend/internal/queue"
 	"flowbit/backend/internal/repo"
@@ -26,10 +27,17 @@ type JobPublisher interface {
 	PublishJob(ctx context.Context, msg queue.JobMessage) error
 }
 
+// AIDispatcher translates a plain-English prompt into a structured job payload.
+// If nil, POST /dispatch returns 501 Not Implemented.
+type AIDispatcher interface {
+	Dispatch(ctx context.Context, prompt string) (dispatcher.DispatchResult, error)
+}
+
 // Server wires HTTP handlers to a store and publisher.
 type Server struct {
-	Store     JobStore
-	Publisher JobPublisher
+	Store        JobStore
+	Publisher    JobPublisher
+	AIDispatcher AIDispatcher
 }
 
 type createJobRequest struct {
@@ -42,6 +50,7 @@ func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", s.HandleHealthz)
 	mux.HandleFunc("POST /jobs", s.HandleCreateJob)
 	mux.HandleFunc("GET /jobs/{id}", s.HandleGetJob)
+	mux.HandleFunc("POST /dispatch", s.HandleDispatch)
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
