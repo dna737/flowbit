@@ -1,0 +1,47 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "7c7aed50b7d062f5cba8765437187e1cb68d979e",
+  "prompts": {
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 462,
+      "total_deletions": 31,
+      "accepted_lines": 461,
+      "overriden_lines": 0
+    },
+    "58e3621fcd41a86e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f967e02-05d2-4e41-aabc-37b93ecd2cb4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "fdcfae4d229346c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18261b08-5e56-4903-a45c-05ad4d3afc77",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
