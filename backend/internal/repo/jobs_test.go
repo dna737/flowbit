@@ -82,14 +82,71 @@ func TestJobsRepo_UpdateJobStatus_noRows(t *testing.T) {
 	}
 	defer mock.Close()
 
-	mock.ExpectExec(`UPDATE jobs`).
+	mock.ExpectQuery(`WITH updated AS`).
 		WithArgs("550e8400-e29b-41d4-a716-446655440002", models.JobStatusRunning, pgxmock.AnyArg()).
-		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+		WillReturnError(pgx.ErrNoRows)
 
 	r := NewJobsRepo(mock)
 	err = r.UpdateJobStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440002", models.JobStatusRunning, nil)
 	if !errors.Is(err, ErrJobNotFound) {
 		t.Fatalf("want ErrJobNotFound, got %v", err)
+	}
+}
+
+func TestJobsRepo_UpdateJobStatus_success(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	rows := mock.NewRows([]string{"id"}).AddRow("550e8400-e29b-41d4-a716-446655440003")
+	mock.ExpectQuery(`WITH updated AS`).
+		WithArgs("550e8400-e29b-41d4-a716-446655440003", models.JobStatusSucceeded, pgxmock.AnyArg()).
+		WillReturnRows(rows)
+
+	r := NewJobsRepo(mock)
+	if err := r.UpdateJobStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440003", models.JobStatusSucceeded, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJobsRepo_ListJobs(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	now := time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC)
+	lastError := "boom"
+	rows := mock.NewRows([]string{"id", "job_type", "parameters", "status", "attempts", "last_error", "created_at", "updated_at"}).
+		AddRow("550e8400-e29b-41d4-a716-446655440010", "echo", []byte(`{"message":"newest"}`), models.JobStatusSucceeded, 1, nil, now, now).
+		AddRow("550e8400-e29b-41d4-a716-446655440011", "fail", []byte(`{"kind":"older"}`), models.JobStatusFailed, 3, &lastError, now.Add(-time.Minute), now.Add(-time.Minute))
+
+	mock.ExpectQuery(`SELECT id::text, job_type, parameters`).
+		WithArgs(2).
+		WillReturnRows(rows)
+
+	r := NewJobsRepo(mock)
+	jobs, err := r.ListJobs(context.Background(), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 2 {
+		t.Fatalf("want 2 jobs got %d", len(jobs))
+	}
+	if jobs[0].Parameters["message"] != "newest" {
+		t.Fatalf("unexpected first job params: %+v", jobs[0].Parameters)
+	}
+	if jobs[1].Status != models.JobStatusFailed {
+		t.Fatalf("unexpected second job status: %s", jobs[1].Status)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -49,3 +49,21 @@ func TestLoad_KafkaCertFiles_custom(t *testing.T) {
 		t.Fatalf("expected custom CA file, got %q", cfg.KafkaCAFile)
 	}
 }
+
+func TestLoad_AllowedOrigins_defaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("KAFKA_BROKERS", "localhost:9092")
+	t.Setenv("ALLOWED_ORIGINS", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(cfg.AllowedOrigins) == 0 {
+		t.Fatal("expected default allowed origins")
+	}
+	if cfg.AllowedOrigins[0] != "http://localhost:5173" {
+		t.Fatalf("unexpected first default origin: %q", cfg.AllowedOrigins[0])
+	}
+}

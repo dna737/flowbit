@@ -68,6 +68,33 @@ curl http://localhost:8080/jobs/<job-id>
 
 A successful end-to-end run transitions job status to `succeeded`.
 
+## Block 5 live visualizer
+
+Start the API, worker, and frontend in separate terminals:
+
+Terminal 1:
+
+```powershell
+cd backend
+go run ./cmd/api
+```
+
+Terminal 2:
+
+```powershell
+cd backend
+go run ./cmd/worker
+```
+
+Terminal 3:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173`, submit a prompt, and the board will update over WebSocket as the worker moves the job through each state. Configure `ALLOWED_ORIGINS` in the root `.env` when the UI is hosted anywhere other than the default localhost dev ports.
+
 ## Automated tests
 
 From `backend/`:

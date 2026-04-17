@@ -14,6 +14,7 @@ import (
 	"flowbit/backend/internal/db"
 	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/kafka"
+	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
 )
 
@@ -39,6 +40,10 @@ func main() {
 	}
 
 	jobsRepo := repo.NewJobsRepo(pool)
+	hub := realtime.NewHub()
+	go hub.Run(ctx)
+	go realtime.Listen(ctx, cfg.DatabaseURL, hub)
+
 	writer, err := kafka.NewWriter(kafka.Config{
 		Brokers:  cfg.KafkaBrokers,
 		Topic:    cfg.KafkaTopicJobs,
@@ -63,16 +68,17 @@ func main() {
 	}
 
 	srv := &api.Server{
-		Store:        jobsRepo,
-		Publisher:    kafkaJobPublisher{writer: writer},
-		AIDispatcher: aiDispatcher,
+		Store:          jobsRepo,
+		Publisher:      kafkaJobPublisher{writer: writer},
+		AIDispatcher:   aiDispatcher,
+		Hub:            hub,
+		Lister:         jobsRepo,
+		AllowedOrigins: cfg.AllowedOrigins,
 	}
-	mux := http.NewServeMux()
-	srv.Mount(mux)
 
 	server := &http.Server{
 		Addr:              cfg.APIAddr,
-		Handler:           mux,
+		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,

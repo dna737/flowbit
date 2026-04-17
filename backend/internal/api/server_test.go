@@ -12,6 +12,7 @@ import (
 
 	"flowbit/backend/internal/models"
 	"flowbit/backend/internal/queue"
+	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
 )
 
@@ -52,6 +53,23 @@ func (f *fakePublisher) PublishJob(ctx context.Context, msg queue.JobMessage) er
 	}
 	return nil
 }
+
+type fakeLister struct {
+	listJobs func(ctx context.Context, limit int) ([]models.Job, error)
+}
+
+func (f *fakeLister) ListJobs(ctx context.Context, limit int) ([]models.Job, error) {
+	if f.listJobs != nil {
+		return f.listJobs(ctx, limit)
+	}
+	return nil, nil
+}
+
+type fakeHub struct{}
+
+func (fakeHub) Register(*realtime.Client)   {}
+func (fakeHub) Unregister(*realtime.Client) {}
+func (fakeHub) Broadcast([]byte)            {}
 
 func TestHandleHealthz(t *testing.T) {
 	s := &Server{}
@@ -207,5 +225,74 @@ func TestHandleGetJob_ok(t *testing.T) {
 	}
 	if got.ID != want.ID || got.Status != want.Status {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestServerHandler_setsCORSHeadersForAllowedOrigin(t *testing.T) {
+	s := &Server{
+		AllowedOrigins: []string{"http://localhost:5173"},
+	}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
+		t.Fatalf("unexpected allow origin header: %q", rr.Header().Get("Access-Control-Allow-Origin"))
+	}
+}
+
+func TestServerHandler_handlesPreflight(t *testing.T) {
+	s := &Server{
+		AllowedOrigins: []string{"http://localhost:5173"},
+	}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/jobs", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("want 204 got %d", rr.Code)
+	}
+}
+
+func TestServerMount_omitsWebSocketRouteWithoutRealtimeDeps(t *testing.T) {
+	s := &Server{}
+	mux := http.NewServeMux()
+	s.Mount(mux)
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ws", nil)
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("want 404 got %d", rr.Code)
+	}
+}
+
+func TestServerMount_registersWebSocketRouteWithRealtimeDeps(t *testing.T) {
+	s := &Server{
+		Hub:            fakeHub{},
+		Lister:         &fakeLister{},
+		AllowedOrigins: []string{"http://localhost:5173"},
+	}
+	mux := http.NewServeMux()
+	s.Mount(mux)
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ws", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Sec-WebSocket-Version", "13")
+	req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusNotFound {
+		t.Fatal("expected websocket route to be registered")
 	}
 }

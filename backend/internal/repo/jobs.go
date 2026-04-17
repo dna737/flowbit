@@ -18,6 +18,7 @@ var ErrJobNotFound = errors.New("job not found")
 // dbPool is the subset of *pgxpool.Pool used by JobsRepo (mockable in tests).
 type dbPool interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
@@ -70,6 +71,37 @@ func (r *JobsRepo) GetJobByID(ctx context.Context, id string) (models.Job, error
 	return out, nil
 }
 
+func (r *JobsRepo) ListJobs(ctx context.Context, limit int) ([]models.Job, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
+		FROM jobs
+		ORDER BY created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []models.Job
+	for rows.Next() {
+		job, err := scanJob(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan listed job: %w", err)
+		}
+		jobs = append(jobs, job)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate listed jobs: %w", err)
+	}
+
+	return jobs, nil
+}
+
 func scanJob(row pgx.Row) (models.Job, error) {
 	var out models.Job
 	var rawParams []byte
@@ -83,19 +115,26 @@ func scanJob(row pgx.Row) (models.Job, error) {
 }
 
 func (r *JobsRepo) UpdateJobStatus(ctx context.Context, id string, status string, lastError *string) error {
-	cmd, err := r.pool.Exec(ctx, `
-		UPDATE jobs
-		SET status     = $2,
-		    last_error = $3,
-		    attempts   = CASE WHEN $2 = 'running' THEN attempts + 1 ELSE attempts END,
-		    updated_at = NOW()
-		WHERE id = $1
+	row := r.pool.QueryRow(ctx, `
+		WITH updated AS (
+			UPDATE jobs
+			SET status     = $2,
+			    last_error = $3,
+			    attempts   = CASE WHEN $2 = 'running' THEN attempts + 1 ELSE attempts END,
+			    updated_at = NOW()
+			WHERE id = $1
+			RETURNING id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
+		)
+		SELECT updated.id
+		FROM updated, LATERAL pg_notify('job_status', row_to_json(updated)::text)
 	`, id, status, lastError)
-	if err != nil {
+
+	var updatedID string
+	if err := row.Scan(&updatedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrJobNotFound
+		}
 		return fmt.Errorf("update job status: %w", err)
-	}
-	if cmd.RowsAffected() == 0 {
-		return ErrJobNotFound
 	}
 	return nil
 }

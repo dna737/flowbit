@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	APIAddr          string
-	DatabaseURL      string
-	KafkaBrokers     []string
-	KafkaTopicJobs   string
+	APIAddr        string
+	DatabaseURL    string
+	AllowedOrigins []string
+	KafkaBrokers   []string
+	KafkaTopicJobs string
 	// Aiven uses TLS certificate authentication (service.cert, service.key, ca.pem)
 	KafkaCertFile    string // Path to service.cert
 	KafkaKeyFile     string // Path to service.key
@@ -25,10 +26,11 @@ type Config struct {
 
 func Load() (Config, error) {
 	cfg := Config{
-		APIAddr:          getenv("API_ADDR", ":8080"),
-		DatabaseURL:      getenv("DATABASE_URL", ""),
-		KafkaBrokers:     splitCSV(os.Getenv("KAFKA_BROKERS")),
-		KafkaTopicJobs:   getenv("KAFKA_TOPIC_JOBS", "jobs"),
+		APIAddr:        getenv("API_ADDR", ":8080"),
+		DatabaseURL:    getenv("DATABASE_URL", ""),
+		AllowedOrigins: splitCSV(getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000")),
+		KafkaBrokers:   splitCSV(os.Getenv("KAFKA_BROKERS")),
+		KafkaTopicJobs: getenv("KAFKA_TOPIC_JOBS", "jobs"),
 		// Aiven TLS certificate files — empty by default (TLS opt-in).
 		// Relative paths are resolved against the directory of the loaded .env file.
 		KafkaCertFile:    resolveFromDotenv(getenv("KAFKA_CERT_FILE", "")),

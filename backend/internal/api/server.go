@@ -6,12 +6,14 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/models"
 	"flowbit/backend/internal/queue"
+	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
 )
 
@@ -33,11 +35,20 @@ type AIDispatcher interface {
 	Dispatch(ctx context.Context, prompt string) (dispatcher.DispatchResult, error)
 }
 
+type Hub interface {
+	Register(*realtime.Client)
+	Unregister(*realtime.Client)
+	Broadcast([]byte)
+}
+
 // Server wires HTTP handlers to a store and publisher.
 type Server struct {
-	Store        JobStore
-	Publisher    JobPublisher
-	AIDispatcher AIDispatcher
+	Store          JobStore
+	Publisher      JobPublisher
+	AIDispatcher   AIDispatcher
+	Hub            Hub
+	Lister         realtime.JobLister
+	AllowedOrigins []string
 }
 
 type createJobRequest struct {
@@ -51,6 +62,15 @@ func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("POST /jobs", s.HandleCreateJob)
 	mux.HandleFunc("GET /jobs/{id}", s.HandleGetJob)
 	mux.HandleFunc("POST /dispatch", s.HandleDispatch)
+	if s.Hub != nil && s.Lister != nil {
+		mux.Handle("GET /ws", realtime.Handler(s.Hub, s.Lister, s.AllowedOrigins))
+	}
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	s.Mount(mux)
+	return s.withCORS(mux)
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -129,4 +149,23 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		log.Printf("json encode error: %v", err)
 	}
+}
+
+func (s *Server) withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if origin != "" && slices.Contains(s.AllowedOrigins, origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
