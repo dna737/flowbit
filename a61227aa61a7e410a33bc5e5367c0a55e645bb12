@@ -1,0 +1,165 @@
+.agents/skills/review-patterns/SKILL.md
+  43575faf0ffcdf5b 1-73
+.claude/settings.local.json
+  58e3621fcd41a86e 12-13
+  fdcfae4d229346c2 14-15
+.gitignore
+  43575faf0ffcdf5b 26
+backend/internal/realtime/listener.go
+  43575faf0ffcdf5b 1-98
+frontend/vercel.json
+  43575faf0ffcdf5b 1-8
+frontend/src/jobs/reducer.test.ts
+  43575faf0ffcdf5b 1-56
+backend/internal/realtime/hub_test.go
+  43575faf0ffcdf5b 1-80
+backend/internal/repo/jobs_test.go
+  483bc943135fc89b 85,87,96-149
+  af1b1f52b262eddf 150-152
+.agents/skills/run-review/SKILL.md
+  43575faf0ffcdf5b 1-108
+backend/internal/api/server_test.go
+  af1b1f52b262eddf 297-298
+  483bc943135fc89b 15,57-73,230-296
+README.md
+  43575faf0ffcdf5b 71-96
+.agents/skills/check-pr-comments/SKILL.md
+  43575faf0ffcdf5b 1-175
+frontend/src/hooks/useJobSocket.ts
+  43575faf0ffcdf5b 1-80
+.agents/skills/codebase-context/SKILL.md
+  43575faf0ffcdf5b 1-65
+backend/internal/realtime/handler.go
+  43575faf0ffcdf5b 1-137
+backend/internal/repo/jobs.go
+  483bc943135fc89b 21,74-104,118-129,131-136
+frontend/.env.example
+  43575faf0ffcdf5b 1-2
+backend/internal/api/server.go
+  483bc943135fc89b 9,16,38-43,46-51,65-73,153-170
+  af1b1f52b262eddf 171
+frontend/src/components/JobCard.tsx
+  43575faf0ffcdf5b 1-59
+frontend/src/jobs/types.ts
+  43575faf0ffcdf5b 1-38
+backend/cmd/api/main.go
+  483bc943135fc89b 17,43-46,71-76,81
+backend/internal/config/config_test.go
+  483bc943135fc89b 52-69
+frontend/src/jobs/reducer.ts
+  43575faf0ffcdf5b 1-26
+backend/internal/config/config.go
+  483bc943135fc89b 12-16,29-33
+backend/go.mod
+  483bc943135fc89b 24
+backend/internal/realtime/hub.go
+  43575faf0ffcdf5b 1-91
+frontend/package.json
+  43575faf0ffcdf5b 1-27
+frontend/src/components/DispatchPanel.tsx
+  43575faf0ffcdf5b 1-59
+.env.example
+  43575faf0ffcdf5b 3
+frontend/src/jobs/JobsContext.tsx
+  43575faf0ffcdf5b 1-43
+frontend/src/components/PipelineBoard.tsx
+  43575faf0ffcdf5b 1-54
+frontend/src/theme.ts
+  43575faf0ffcdf5b 1-29
+frontend/tsconfig.app.tsbuildinfo
+  483bc943135fc89b 1
+frontend/src/vite-env.d.ts
+  43575faf0ffcdf5b 1
+frontend/tsconfig.json
+  43575faf0ffcdf5b 1-6
+frontend/src/components/ConnectionBadge.tsx
+  43575faf0ffcdf5b 1-36
+frontend/vite.config.ts
+  43575faf0ffcdf5b 1-23
+frontend/src/main.tsx
+  43575faf0ffcdf5b 1-15
+.agents/skills/cubic-loop/SKILL.md
+  43575faf0ffcdf5b 1-173
+frontend/src/api/client.ts
+  43575faf0ffcdf5b 1-47
+frontend/src/components/StatusColumn.tsx
+  43575faf0ffcdf5b 1-42
+frontend/tsconfig.app.json
+  43575faf0ffcdf5b 1-18
+frontend/index.html
+  43575faf0ffcdf5b 1-12
+frontend/src/App.tsx
+  43575faf0ffcdf5b 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "a61227aa61a7e410a33bc5e5367c0a55e645bb12",
+  "prompts": {
+    "43575faf0ffcdf5b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9a25-bf9d-78b0-a29d-38b03cb23ae2",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 1768,
+      "total_deletions": 0,
+      "accepted_lines": 1914,
+      "overriden_lines": 0
+    },
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 461,
+      "overriden_lines": 0
+    },
+    "58e3621fcd41a86e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f967e02-05d2-4e41-aabc-37b93ecd2cb4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "af1b1f52b262eddf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9a25-f6c3-7242-a86b-38076e2692b5",
+        "model": "unknown"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    },
+    "fdcfae4d229346c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18261b08-5e56-4903-a45c-05ad4d3afc77",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
