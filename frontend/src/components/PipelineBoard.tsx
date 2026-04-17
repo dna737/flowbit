@@ -1,7 +1,8 @@
-import { Box, Stack } from "@mui/material";
+import { Box } from "@mui/material";
 
 import { StatusColumn } from "./StatusColumn";
 import type { Job, JobStatus } from "../jobs/types";
+import { tokens } from "../theme";
 
 const columnLabels: Record<JobStatus, string> = {
   pending: "Pending",
@@ -21,34 +22,29 @@ export function PipelineBoard({ jobs }: PipelineBoardProps) {
       acc[job.status].push(job);
       return acc;
     },
-    {
-      pending: [],
-      running: [],
-      retrying: [],
-      succeeded: [],
-      failed: [],
-    },
+    { pending: [], running: [], retrying: [], succeeded: [], failed: [] },
   );
 
   return (
-    <Stack spacing={2}>
-      <Box
-        sx={{
-          display: "grid",
-          gap: 2,
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(2, minmax(0, 1fr))",
-            xl: "repeat(5, minmax(0, 1fr))",
-          },
-        }}
-      >
-        {(Object.keys(columnLabels) as JobStatus[]).map((status) => (
-          <Box key={status}>
-            <StatusColumn title={columnLabels[status]} status={status} jobs={byStatus[status]} />
-          </Box>
-        ))}
-      </Box>
-    </Stack>
+    <Box
+      sx={{
+        flex: 1,
+        minWidth: 0,
+        p: `${tokens.spacing.lg}px`,
+        display: "flex",
+        gap: `${tokens.spacing.md}px`,
+        overflowX: "auto",
+        alignItems: "stretch",
+      }}
+    >
+      {(Object.keys(columnLabels) as JobStatus[]).map((status) => (
+        <StatusColumn
+          key={status}
+          title={columnLabels[status]}
+          status={status}
+          jobs={byStatus[status]}
+        />
+      ))}
+    </Box>
   );
 }

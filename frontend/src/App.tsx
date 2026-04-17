@@ -1,8 +1,9 @@
-import { Box, Container, Stack, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
-import { ConnectionBadge } from "./components/ConnectionBadge";
-import { DispatchPanel } from "./components/DispatchPanel";
+import { CommandBar } from "./components/CommandBar";
+import { MetricsStrip } from "./components/MetricsStrip";
 import { PipelineBoard } from "./components/PipelineBoard";
+import { RightRail } from "./components/RightRail";
 import { useJobSocket } from "./hooks/useJobSocket";
 import { JobsProvider, useJobsDispatch, useJobsState } from "./jobs/JobsContext";
 
@@ -28,31 +29,20 @@ function Dashboard() {
     <Box
       sx={{
         minHeight: "100vh",
-        py: 6,
-        background:
-          "radial-gradient(circle at top left, rgba(18,86,216,0.16), transparent 32%), linear-gradient(180deg, #f5f7fb 0%, #eef3fb 100%)",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "background.default",
       }}
     >
-      <Container maxWidth="xl">
-        <Stack spacing={3}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
-            spacing={2}
-          >
-            <Box>
-              <Typography variant="h4">Flowbit Live Visualizer</Typography>
-              <Typography variant="body1" color="text.secondary">
-                Watch jobs move across the pipeline in real time.
-              </Typography>
-            </Box>
-            <ConnectionBadge status={connectionStatus} />
-          </Stack>
-          <DispatchPanel onJobCreated={(job) => dispatch({ type: "UPSERT", job })} />
-          <PipelineBoard jobs={sortedJobs} />
-        </Stack>
-      </Container>
+      <MetricsStrip jobs={sortedJobs} />
+      <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
+        <PipelineBoard jobs={sortedJobs} />
+        <RightRail jobs={sortedJobs} />
+      </Box>
+      <CommandBar
+        onJobCreated={(job) => dispatch({ type: "UPSERT", job })}
+        connectionStatus={connectionStatus}
+      />
     </Box>
   );
 }
