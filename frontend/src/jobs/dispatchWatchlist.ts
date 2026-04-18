@@ -50,3 +50,15 @@ export function prependWatchlistEntry(
   ];
   return next.slice(0, MAX_WATCHLIST_ENTRIES);
 }
+
+/** Rewrites `fromId` to `toId` (e.g. client placeholder to server job id). Order preserved. */
+export function replaceWatchlistJobId(
+  current: DispatchWatchlistEntry[],
+  fromId: string,
+  toId: string,
+): DispatchWatchlistEntry[] {
+  if (fromId === toId) return current;
+  return current.map((e) =>
+    e.jobId === fromId ? { ...e, jobId: toId } : e,
+  );
+}

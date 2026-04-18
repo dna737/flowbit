@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CommandBar } from "./components/CommandBar";
 import { MetricsStrip } from "./components/MetricsStrip";
@@ -9,11 +9,11 @@ import { useJobSocket } from "./hooks/useJobSocket";
 import {
   loadWatchlistFromSession,
   prependWatchlistEntry,
+  replaceWatchlistJobId,
   saveWatchlistToSession,
   type DispatchWatchlistEntry,
 } from "./jobs/dispatchWatchlist";
 import { JobsProvider, useJobsDispatch, useJobsState } from "./jobs/JobsContext";
-import type { Job } from "./jobs/types";
 
 export default function App() {
   return (
@@ -42,10 +42,6 @@ function Dashboard() {
   );
 
   const latestTrackedJobId = useMemo(() => watchlist[0]?.jobId ?? null, [watchlist]);
-
-  const handleDispatched = useCallback((job: Job, prompt: string) => {
-    setWatchlist((current) => prependWatchlistEntry(current, job.id, prompt));
-  }, []);
 
   const sortedJobs = Object.values(jobs).sort(
     (left, right) =>
@@ -76,8 +72,13 @@ function Dashboard() {
         />
       </Box>
       <CommandBar
-        onJobCreated={(job) => dispatch({ type: "UPSERT", job })}
-        onDispatched={handleDispatched}
+        dispatchJobs={dispatch}
+        onWatchlistPrepend={(jobId, prompt) =>
+          setWatchlist((current) => prependWatchlistEntry(current, jobId, prompt))
+        }
+        onWatchlistReplaceJobId={(fromId, toId) =>
+          setWatchlist((current) => replaceWatchlistJobId(current, fromId, toId))
+        }
         connectionStatus={connectionStatus}
       />
     </Box>

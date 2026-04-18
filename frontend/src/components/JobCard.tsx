@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 
-import type { Job } from "../jobs/types";
+import { FLOWBIT_PROMPT_PARAM, type Job } from "../jobs/types";
 import { statusColor, tokens } from "../theme";
 
 interface JobCardProps {
@@ -54,7 +54,7 @@ export function JobCard({ job, isLatestDispatch }: JobCardProps) {
                 whiteSpace: "nowrap",
               }}
             >
-              {job.job_type}
+              {titleForJob(job)}
             </Typography>
           </Stack>
           <Box
@@ -109,6 +109,11 @@ export function JobCard({ job, isLatestDispatch }: JobCardProps) {
       </Stack>
     </Box>
   );
+}
+
+function titleForJob(job: Job): string {
+  const p = job.parameters[FLOWBIT_PROMPT_PARAM];
+  return typeof p === "string" && p.trim() !== "" ? p : job.job_type;
 }
 
 function formatRelativeTime(value: string) {
