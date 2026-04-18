@@ -1,0 +1,61 @@
+docs/40-ai-dispatcher.md
+  89bf280a9a907f83 10
+docs/BUILD-CHECKLIST.md
+  89bf280a9a907f83 41
+frontend/tsconfig.app.tsbuildinfo
+  a779f325bd7ed388 1
+.env.example
+  89bf280a9a907f83 22-27
+backend/cmd/api/main.go
+  89bf280a9a907f83 61
+backend/internal/config/config.go
+  89bf280a9a907f83 24-27,45-46
+backend/internal/dispatcher/gemini.go
+  89bf280a9a907f83 8-9,11,28-35,39-40,43-44,46-47,51-55,57-72,74-81,83-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "3ea3eb95a255050ce9ffefb0343a7866d011cf5c",
+  "prompts": {
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 181,
+      "overriden_lines": 0
+    },
+    "89bf280a9a907f83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffd242a0-0397-4f12-a8ee-4298d9fe47e0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 358,
+      "total_deletions": 82,
+      "accepted_lines": 196,
+      "overriden_lines": 0
+    },
+    "a779f325bd7ed388": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37d59fb4-ea92-4384-bbbd-02e6728278f6",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
