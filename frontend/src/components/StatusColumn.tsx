@@ -25,7 +25,7 @@ export function StatusColumn({ title, status, jobs }: StatusColumnProps) {
   return (
     <Box
       sx={{
-        flex: 1,
+        flex: "1 1 0",
         minWidth: 0,
         backgroundColor: tokens.color.bgSurface,
         border: `1px solid ${tokens.color.borderSubtle}`,

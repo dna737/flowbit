@@ -49,6 +49,7 @@ export function CommandBar({ onJobCreated, connectionStatus }: CommandBarProps) 
   return (
     <Box
       sx={{
+        flexShrink: 0,
         height: 80,
         backgroundColor: tokens.color.bgSurface,
         borderTop: `1px solid ${tokens.color.borderSubtle}`,

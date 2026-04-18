@@ -20,6 +20,7 @@ export function JobCard({ job }: { job: Job }) {
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Typography
             sx={{
+              minWidth: 0,
               fontFamily: tokens.font.sans,
               fontSize: 12,
               fontWeight: 600,

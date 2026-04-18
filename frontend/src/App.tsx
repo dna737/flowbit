@@ -28,7 +28,8 @@ function Dashboard() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        height: "100%",
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         backgroundColor: "background.default",

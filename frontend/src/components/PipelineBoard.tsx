@@ -30,9 +30,11 @@ export function PipelineBoard({ jobs }: PipelineBoardProps) {
       sx={{
         flex: 1,
         minWidth: 0,
+        minHeight: 0,
         p: `${tokens.spacing.lg}px`,
         display: "flex",
         gap: `${tokens.spacing.md}px`,
+        overflow: "hidden",
         overflowX: "auto",
         alignItems: "stretch",
       }}

@@ -11,6 +11,7 @@ export function MetricsStrip({ jobs }: { jobs: Job[] }) {
   return (
     <Box
       sx={{
+        flexShrink: 0,
         height: 72,
         backgroundColor: tokens.color.bgSurface,
         borderBottom: `1px solid ${tokens.color.borderSubtle}`,
