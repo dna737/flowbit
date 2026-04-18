@@ -1,0 +1,77 @@
+frontend/src/App.tsx
+  d1246fa2c4a46dbb 2,12,75-81
+frontend/src/jobs/dispatchWatchlist.ts
+  d1246fa2c4a46dbb 53-64
+frontend/src/jobs/reducer.test.ts
+  d1246fa2c4a46dbb 4,56-112
+frontend/src/jobs/types.ts
+  d1246fa2c4a46dbb 23-32,35
+frontend/src/components/CommandBar.tsx
+  f1361f417e9de6d3 22,32-33,102-157
+  d1246fa2c4a46dbb 1,6,10,14-19,26-28,34-47,49-54,60-66,68,71-73,75-85,161,172
+frontend/src/components/icons.tsx
+  f1361f417e9de6d3 84-93
+frontend/src/components/JobCard.tsx
+  d1246fa2c4a46dbb 3,57,114-118
+frontend/src/jobs/reducer.ts
+  d1246fa2c4a46dbb 1,16-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "762897e971865d202de5bf160d6e8a58a1f65594",
+  "prompts": {
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 181,
+      "overriden_lines": 0
+    },
+    "d1246fa2c4a46dbb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eefec9d9-a633-454d-94dd-3e3a43ac5786",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 172,
+      "total_deletions": 40,
+      "accepted_lines": 220,
+      "overriden_lines": 0
+    },
+    "e0c1ba59bf620ff4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db75c9fd-985e-4304-99ba-ce70eb67e457",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "f1361f417e9de6d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3eba4048-f570-4820-bad2-712822b4e89d",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 71,
+      "total_deletions": 44,
+      "accepted_lines": 69,
+      "overriden_lines": 0
+    }
+  }
+}
