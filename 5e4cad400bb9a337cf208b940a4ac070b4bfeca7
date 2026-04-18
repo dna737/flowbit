@@ -1,0 +1,88 @@
+.cursor/rules/caveman.mdc
+  a40f20d36c4f58b9 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5e4cad400bb9a337cf208b940a4ac070b4bfeca7",
+  "prompts": {
+    "01752bc6f0c816e9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ea794e8-c156-4510-84c8-2286c93004d4",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 20,
+      "accepted_lines": 35,
+      "overriden_lines": 0
+    },
+    "473751181189fc67": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "15bfb059-7280-43ff-8e8f-4e1eac4777ba",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 582,
+      "total_deletions": 62,
+      "accepted_lines": 589,
+      "overriden_lines": 0
+    },
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 181,
+      "overriden_lines": 0
+    },
+    "4dc3492f6762d08e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9e0795e-415f-43f5-85e0-09f5e2159a10",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 187,
+      "total_deletions": 22,
+      "accepted_lines": 3,
+      "overriden_lines": 1
+    },
+    "63421a2b90fd9599": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "50f2de79-939c-4c9c-9cfc-d7d82d3a6989",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 128,
+      "total_deletions": 113,
+      "accepted_lines": 66,
+      "overriden_lines": 0
+    },
+    "a40f20d36c4f58b9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c630ecce-b393-4d53-a46e-257e62058859",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}
