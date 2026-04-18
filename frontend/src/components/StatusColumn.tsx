@@ -10,6 +10,7 @@ interface StatusColumnProps {
   title: string;
   status: JobStatus;
   jobs: Job[];
+  latestTrackedJobId: string | null;
 }
 
 const statusIcon: Record<JobStatus, ReactNode> = {
@@ -20,7 +21,12 @@ const statusIcon: Record<JobStatus, ReactNode> = {
   failed: <AlertIcon />,
 };
 
-export function StatusColumn({ title, status, jobs }: StatusColumnProps) {
+export function StatusColumn({
+  title,
+  status,
+  jobs,
+  latestTrackedJobId,
+}: StatusColumnProps) {
   const color = statusColor[status];
   return (
     <Box
@@ -90,7 +96,13 @@ export function StatusColumn({ title, status, jobs }: StatusColumnProps) {
             empty
           </Typography>
         ) : (
-          jobs.map((job) => <JobCard key={job.id} job={job} />)
+          jobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              isLatestDispatch={job.id === latestTrackedJobId}
+            />
+          ))
         )}
       </Stack>
     </Box>

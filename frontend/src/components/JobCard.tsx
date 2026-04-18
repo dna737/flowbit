@@ -3,7 +3,13 @@ import { Box, Stack, Typography } from "@mui/material";
 import type { Job } from "../jobs/types";
 import { statusColor, tokens } from "../theme";
 
-export function JobCard({ job }: { job: Job }) {
+interface JobCardProps {
+  job: Job;
+  /** Most recent job dispatched from this UI in the session (watchlist head). */
+  isLatestDispatch?: boolean;
+}
+
+export function JobCard({ job, isLatestDispatch }: JobCardProps) {
   const color = statusColor[job.status];
 
   return (
@@ -11,27 +17,46 @@ export function JobCard({ job }: { job: Job }) {
       sx={{
         p: 1.25,
         borderRadius: `${tokens.radius.md}px`,
-        backgroundColor: tokens.color.bgElevated,
-        border: `1px solid ${tokens.color.borderSubtle}`,
-        borderLeft: `2px solid ${color.main}`,
+        backgroundColor: isLatestDispatch ? tokens.color.accentBlueMuted : tokens.color.bgElevated,
+        border: isLatestDispatch
+          ? `1px solid ${tokens.color.accentBlue}`
+          : `1px solid ${tokens.color.borderSubtle}`,
+        borderLeft: `3px solid ${color.main}`,
+        boxShadow: isLatestDispatch ? `0 0 0 1px ${tokens.color.accentBlue}33` : undefined,
       }}
     >
       <Stack spacing={0.75}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Typography
-            sx={{
-              minWidth: 0,
-              fontFamily: tokens.font.sans,
-              fontSize: 12,
-              fontWeight: 600,
-              color: tokens.color.textPrimary,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {job.job_type}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+            {isLatestDispatch ? (
+              <Typography
+                sx={{
+                  flexShrink: 0,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: 0.4,
+                  color: tokens.color.accentBlue,
+                  textTransform: "uppercase",
+                }}
+              >
+                LATEST
+              </Typography>
+            ) : null}
+            <Typography
+              sx={{
+                minWidth: 0,
+                fontFamily: tokens.font.sans,
+                fontSize: 12,
+                fontWeight: 600,
+                color: tokens.color.textPrimary,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {job.job_type}
+            </Typography>
+          </Stack>
           <Box
             sx={{
               fontFamily: tokens.font.mono,

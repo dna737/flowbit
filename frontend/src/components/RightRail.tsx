@@ -5,8 +5,26 @@ import { JobCard } from "./JobCard";
 import type { Job } from "../jobs/types";
 import { tokens } from "../theme";
 
-export function RightRail({ jobs }: { jobs: Job[] }) {
-  const feed = jobs.slice(0, 50);
+function sortFeedJobs(jobs: Job[], tracked: Set<string>): Job[] {
+  const trackedJobs = jobs.filter((j) => tracked.has(j.id));
+  const other = jobs.filter((j) => !tracked.has(j.id));
+  const byUpdated = (a: Job, b: Job) =>
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  trackedJobs.sort(byUpdated);
+  other.sort(byUpdated);
+  return [...trackedJobs, ...other].slice(0, 50);
+}
+
+export function RightRail({
+  jobs,
+  trackedJobIds,
+  latestTrackedJobId,
+}: {
+  jobs: Job[];
+  trackedJobIds: Set<string>;
+  latestTrackedJobId: string | null;
+}) {
+  const feed = sortFeedJobs(jobs, trackedJobIds);
 
   return (
     <Box
@@ -57,7 +75,11 @@ export function RightRail({ jobs }: { jobs: Job[] }) {
         ) : (
           <Stack spacing={1}>
             {feed.map((j) => (
-              <JobCard key={j.id} job={j} />
+              <JobCard
+                key={j.id}
+                job={j}
+                isLatestDispatch={j.id === latestTrackedJobId}
+              />
             ))}
           </Stack>
         )}

@@ -19,13 +19,15 @@ import type { ConnectionStatus } from "../hooks/useJobSocket";
 
 interface CommandBarProps {
   onJobCreated: (job: Job) => void;
+  /** After successful dispatch — captures plain-English prompt (not stored on the server). */
+  onDispatched?: (job: Job, prompt: string) => void;
   connectionStatus: ConnectionStatus;
 }
 
 const HELPER_EXAMPLES =
   "Try: 'resize all images to 512×512' · 'send weekly digest' · 'POST /api/nuke --force'";
 
-export function CommandBar({ onJobCreated, connectionStatus }: CommandBarProps) {
+export function CommandBar({ onJobCreated, onDispatched, connectionStatus }: CommandBarProps) {
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function CommandBar({ onJobCreated, connectionStatus }: CommandBarProps) 
     try {
       const job = await postDispatch(trimmed);
       onJobCreated(job);
+      onDispatched?.(job, trimmed);
       setPrompt("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Dispatch failed");
