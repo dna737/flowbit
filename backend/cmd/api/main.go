@@ -58,7 +58,7 @@ func main() {
 
 	var aiDispatcher api.AIDispatcher
 	if cfg.GeminiAPIKey != "" {
-		d, err := dispatcher.NewGeminiDispatcher(cfg.GeminiAPIKey, cfg.GeminiModel)
+		d, err := dispatcher.NewGeminiDispatcher(cfg.GeminiAPIKey, cfg.GeminiModel, cfg.GeminiFallbacks...)
 		if err != nil {
 			log.Fatalf("gemini dispatcher error: %v", err)
 		}

@@ -21,7 +21,10 @@ type Config struct {
 	KafkaConsumerGrp string
 	ApplyMigrations  bool
 	GeminiAPIKey     string // from env GEMINI_API_KEY; empty disables POST /dispatch
-	GeminiModel      string // from env GEMINI_MODEL; defaults to gemini-1.5-flash
+	GeminiModel      string // from env GEMINI_MODEL; defaults to gemini-3-flash-preview
+	// GeminiFallbacks is a CSV list of models to try if the primary returns a retryable
+	// error (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED). Tried in order.
+	GeminiFallbacks []string // from env GEMINI_MODEL_FALLBACKS
 }
 
 func Load() (Config, error) {
@@ -39,7 +42,8 @@ func Load() (Config, error) {
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
 		GeminiAPIKey:     getenv("GEMINI_API_KEY", ""),
-		GeminiModel:      getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+		GeminiModel:      getenv("GEMINI_MODEL", "gemini-3-flash-preview"),
+		GeminiFallbacks:  splitCSV(getenv("GEMINI_MODEL_FALLBACKS", "gemini-flash-latest,gemini-2.5-flash,gemini-2.5-pro,gemini-2.0-flash,gemini-2.0-flash-lite")),
 	}
 
 	if cfg.DatabaseURL == "" {

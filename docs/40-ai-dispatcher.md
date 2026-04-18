@@ -7,7 +7,7 @@ See also: [Scheduler](30-scheduler.md) · [Vision and demo](00-vision-and-demo.m
 ## Block 4 — AI dispatcher
 
 - `POST /dispatch` endpoint accepts plain English
-- Calls Gemini API (`gemini-1.5-flash`), extracts `job_type` + `parameters` as JSON
+- Calls Gemini API (`gemini-3-flash-preview` by default; fallback chain on quota/5xx), extracts `job_type` + `parameters` as JSON
 - Forwards structured payload to `POST /jobs`
 - Test with: “send an email”, “resize this image”, “scrape this URL”
 

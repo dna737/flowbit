@@ -38,7 +38,7 @@ Related docs: [Vision and demo](00-vision-and-demo.md) · [Stack](20-stack-and-d
 ## Block 4 — AI dispatcher
 
 - [ ] **Endpoint:** `POST /dispatch` accepts plain English (body shape documented).
-- [ ] **Gemini:** Server calls Gemini (e.g. `gemini-1.5-flash`), parses **structured** output into `job_type`, `parameters`, `priority` (or your schema).
+- [ ] **Gemini:** Server calls Gemini (e.g. `gemini-2.5-flash`), parses **structured** output into `job_type`, `parameters`, `priority` (or your schema).
 - [ ] **Integration:** Successful parse results in the same flow as Block 2: valid `POST /jobs` payload and job execution through the worker.
 - [ ] **Spot checks:** At least three distinct natural-language examples (e.g. email, image resize, URL scrape) each produce a sensible structured job and complete or fail predictably — not only one happy-path string.
 

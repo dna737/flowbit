@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
+	"google.golang.org/genai"
 )
 
 const systemPrompt = `You are a job dispatcher. Given a plain-English request, respond with ONLY valid JSON:
@@ -24,40 +25,74 @@ type GeminiDispatcher struct {
 	gen textGenerator
 }
 
-// NewGeminiDispatcher creates a GeminiDispatcher using the given API key and model name.
-func NewGeminiDispatcher(apiKey, model string) (*GeminiDispatcher, error) {
-	client, err := genai.NewClient(context.Background(), option.WithAPIKey(apiKey))
+// NewGeminiDispatcher creates a GeminiDispatcher using the given API key, primary model,
+// and an optional ordered list of fallback model names tried when the primary returns a
+// retryable error (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED).
+func NewGeminiDispatcher(apiKey, model string, fallbacks ...string) (*GeminiDispatcher, error) {
+	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGeminiAPI,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("gemini client: %w", err)
 	}
-	m := client.GenerativeModel(model)
-	m.SystemInstruction = &genai.Content{
-		Parts: []genai.Part{genai.Text(systemPrompt)},
-	}
-	m.ResponseMIMEType = "application/json"
-	return &GeminiDispatcher{gen: &geminiModel{model: m}}, nil
+	models := append([]string{model}, fallbacks...)
+	return &GeminiDispatcher{gen: &geminiModel{client: client, models: models}}, nil
 }
 
-// geminiModel wraps genai.GenerativeModel as textGenerator.
+// geminiModel wraps genai.Client as textGenerator. It tries each model in order,
+// falling back on retryable upstream errors.
 type geminiModel struct {
-	model *genai.GenerativeModel
+	client *genai.Client
+	models []string
 }
 
 func (g *geminiModel) GenerateContent(ctx context.Context, prompt string) (string, error) {
-	resp, err := g.model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		return "", err
+	cfg := &genai.GenerateContentConfig{
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: systemPrompt}},
+		},
+		ResponseMIMEType: "application/json",
 	}
-	if len(resp.Candidates) == 0 ||
-		resp.Candidates[0].Content == nil ||
-		len(resp.Candidates[0].Content.Parts) == 0 {
-		return "", errors.New("empty response from gemini")
+	var lastErr error
+	for i, m := range g.models {
+		resp, err := g.client.Models.GenerateContent(ctx, m, genai.Text(prompt), cfg)
+		if err != nil {
+			lastErr = err
+			if i < len(g.models)-1 && isRetryable(err) {
+				log.Printf("gemini model %q unavailable (%v); falling back to %q", m, err, g.models[i+1])
+				continue
+			}
+			return "", err
+		}
+		text := resp.Text()
+		if text == "" {
+			return "", errors.New("empty response from gemini")
+		}
+		return text, nil
 	}
-	text, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
-	if !ok {
-		return "", errors.New("unexpected part type from gemini")
+	return "", lastErr
+}
+
+// isRetryable reports whether err is a transient upstream condition worth retrying
+// against a different model (overload / quota).
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
 	}
-	return string(text), nil
+	s := err.Error()
+	// 5xx gateway/server errors + rate-limit/quota errors are all worth trying
+	// another model for. 4xx other than 429 (bad request, auth, not found) are not.
+	return strings.Contains(s, "500") ||
+		strings.Contains(s, "INTERNAL") ||
+		strings.Contains(s, "502") ||
+		strings.Contains(s, "503") ||
+		strings.Contains(s, "UNAVAILABLE") ||
+		strings.Contains(s, "504") ||
+		strings.Contains(s, "DEADLINE_EXCEEDED") ||
+		strings.Contains(s, "429") ||
+		strings.Contains(s, "RESOURCE_EXHAUSTED") ||
+		strings.Contains(s, "overloaded")
 }
 
 // Dispatch calls Gemini with the prompt and parses the JSON response into a DispatchResult.
