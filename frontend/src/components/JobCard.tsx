@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { FLOWBIT_PROMPT_PARAM, type Job } from "../jobs/types";
 import { statusColor, tokens } from "../theme";
+import { JobCardStatusGlyph } from "./JobCardStatusGlyph";
 
 interface JobCardProps {
   job: Job;
@@ -39,7 +40,28 @@ export function JobCard({ job, isLatestDispatch }: JobCardProps) {
       >
       <Stack spacing={0.75}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+          {job.status === "retrying" ||
+          job.status === "succeeded" ||
+          job.status === "failed" ? (
+            <Box
+              key={`${job.id}-${job.status}`}
+              sx={{
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 18,
+              }}
+            >
+              <JobCardStatusGlyph status={job.status} color={color.main} />
+            </Box>
+          ) : null}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={0.75}
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             {isLatestDispatch ? (
               <Typography
                 sx={{
