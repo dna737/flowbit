@@ -34,10 +34,37 @@ func (s *Server) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
-	result, err := s.AIDispatcher.Dispatch(ctx, req.Prompt)
+	categories := []string(nil)
+	if s.Categories != nil {
+		raw, err := s.Categories.GetCategories(ctx, userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load categories"})
+			return
+		}
+		categories = normalizeCategoryList(raw)
+	} else {
+		_ = userID // header validated; no category store wired
+	}
+
+	if s.JobTypes == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "job types not configured"})
+		return
+	}
+	jobTypes, err := s.JobTypes.GetAllowedJobTypes(ctx)
+	if err != nil || len(jobTypes) == 0 {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load allowed job types"})
+		return
+	}
+
+	result, err := s.AIDispatcher.Dispatch(ctx, req.Prompt, categories, jobTypes)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "ai dispatch failed: " + err.Error()})
 		return

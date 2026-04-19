@@ -1,4 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
+import { motion, useReducedMotion } from "motion/react";
 
 import { FLOWBIT_PROMPT_PARAM, type Job } from "../jobs/types";
 import { statusColor, tokens } from "../theme";
@@ -11,20 +12,31 @@ interface JobCardProps {
 
 export function JobCard({ job, isLatestDispatch }: JobCardProps) {
   const color = statusColor[job.status];
+  const prefersReducedMotion = useReducedMotion();
 
   return (
-    <Box
-      sx={{
-        p: 1.25,
-        borderRadius: `${tokens.radius.md}px`,
-        backgroundColor: isLatestDispatch ? tokens.color.accentBlueMuted : tokens.color.bgElevated,
-        border: isLatestDispatch
-          ? `1px solid ${tokens.color.accentBlue}`
-          : `1px solid ${tokens.color.borderSubtle}`,
-        borderLeft: `3px solid ${color.main}`,
-        boxShadow: isLatestDispatch ? `0 0 0 1px ${tokens.color.accentBlue}33` : undefined,
-      }}
+    <motion.div
+      layout={!prefersReducedMotion}
+      layoutId={prefersReducedMotion ? undefined : `job-card-${job.id}`}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : { type: "spring", stiffness: 400, damping: 32 }
+      }
+      style={{ width: "100%", minWidth: 0 }}
     >
+      <Box
+        sx={{
+          p: 1.25,
+          borderRadius: `${tokens.radius.md}px`,
+          backgroundColor: isLatestDispatch ? tokens.color.accentBlueMuted : tokens.color.bgElevated,
+          border: isLatestDispatch
+            ? `1px solid ${tokens.color.accentBlue}`
+            : `1px solid ${tokens.color.borderSubtle}`,
+          borderLeft: `3px solid ${color.main}`,
+          boxShadow: isLatestDispatch ? `0 0 0 1px ${tokens.color.accentBlue}33` : undefined,
+        }}
+      >
       <Stack spacing={0.75}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
@@ -108,6 +120,7 @@ export function JobCard({ job, isLatestDispatch }: JobCardProps) {
         ) : null}
       </Stack>
     </Box>
+    </motion.div>
   );
 }
 

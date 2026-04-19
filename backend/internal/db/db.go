@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed sql/schema.sql
+//go:embed sql/schema.sql sql/users.sql sql/dispatcher_config.sql
 var schemaFS embed.FS
 
 func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
@@ -24,12 +24,14 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 }
 
 func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	schema, err := schemaFS.ReadFile("sql/schema.sql")
-	if err != nil {
-		return fmt.Errorf("read embedded schema: %w", err)
-	}
-	if _, err := pool.Exec(ctx, string(schema)); err != nil {
-		return fmt.Errorf("apply schema: %w", err)
+	for _, path := range []string{"sql/schema.sql", "sql/users.sql", "sql/dispatcher_config.sql"} {
+		sqlBytes, err := schemaFS.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read embedded %s: %w", path, err)
+		}
+		if _, err := pool.Exec(ctx, string(sqlBytes)); err != nil {
+			return fmt.Errorf("apply %s: %w", path, err)
+		}
 	}
 	return nil
 }

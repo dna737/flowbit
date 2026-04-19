@@ -36,6 +36,7 @@ export function RightRail({
         flexDirection: "column",
         backgroundColor: tokens.color.bgPrimary,
         minHeight: 0,
+        overflow: "hidden",
       }}
     >
       <Box
@@ -63,6 +64,7 @@ export function RightRail({
       <Box
         sx={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           px: `${tokens.spacing.md}px`,
           py: `${tokens.spacing.md}px`,

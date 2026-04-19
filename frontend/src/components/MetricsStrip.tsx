@@ -1,11 +1,19 @@
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 
+import { ConnectionBadge } from "./ConnectionBadge";
 import { MetricTile } from "./MetricTile";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
+import type { ConnectionStatus } from "../hooks/useJobSocket";
 import type { Job } from "../jobs/types";
 import { tokens } from "../theme";
 
-export function MetricsStrip({ jobs }: { jobs: Job[] }) {
+export function MetricsStrip({
+  jobs,
+  connectionStatus,
+}: {
+  jobs: Job[];
+  connectionStatus: ConnectionStatus;
+}) {
   const m = useMetricsHistory(jobs);
 
   return (
@@ -17,10 +25,20 @@ export function MetricsStrip({ jobs }: { jobs: Job[] }) {
         borderBottom: `1px solid ${tokens.color.borderSubtle}`,
         px: `${tokens.spacing.xl}px`,
         display: "flex",
-        alignItems: "center",
+        alignItems: "stretch",
+        justifyContent: "space-between",
         gap: `${tokens.spacing.xl}px`,
       }}
     >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: `${tokens.spacing.xl}px`,
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
       <MetricTile
         label="Queue Depth"
         value={m.queueDepth.toLocaleString()}
@@ -45,6 +63,10 @@ export function MetricsStrip({ jobs }: { jobs: Job[] }) {
         history={m.errorHistory}
         accent="failure"
       />
+      </Box>
+      <Stack alignItems="flex-end" justifyContent="flex-start" sx={{ pt: 0.5 }}>
+        <ConnectionBadge status={connectionStatus} />
+      </Stack>
     </Box>
   );
 }

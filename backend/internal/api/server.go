@@ -32,7 +32,12 @@ type JobPublisher interface {
 // AIDispatcher translates a plain-English prompt into a structured job payload.
 // If nil, POST /dispatch returns 501 Not Implemented.
 type AIDispatcher interface {
-	Dispatch(ctx context.Context, prompt string) (dispatcher.DispatchResult, error)
+	Dispatch(ctx context.Context, prompt string, categories []string, jobTypes []string) (dispatcher.DispatchResult, error)
+}
+
+// AllowedJobTypesSource returns the canonical job_type strings allowed for AI dispatch (from dispatcher_config).
+type AllowedJobTypesSource interface {
+	GetAllowedJobTypes(ctx context.Context) ([]string, error)
 }
 
 type Hub interface {
@@ -46,6 +51,8 @@ type Server struct {
 	Store          JobStore
 	Publisher      JobPublisher
 	AIDispatcher   AIDispatcher
+	Categories     CategoryStore
+	JobTypes       AllowedJobTypesSource
 	Hub            Hub
 	Lister         realtime.JobLister
 	AllowedOrigins []string
@@ -62,6 +69,8 @@ func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("POST /jobs", s.HandleCreateJob)
 	mux.HandleFunc("GET /jobs/{id}", s.HandleGetJob)
 	mux.HandleFunc("POST /dispatch", s.HandleDispatch)
+	mux.HandleFunc("GET /settings/dispatch-categories", s.HandleGetDispatchCategories)
+	mux.HandleFunc("PUT /settings/dispatch-categories", s.HandlePutDispatchCategories)
 	if s.Hub != nil && s.Lister != nil {
 		mux.Handle("GET /ws", realtime.Handler(s.Hub, s.Lister, s.AllowedOrigins))
 	}
@@ -157,8 +166,8 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		if origin != "" && slices.Contains(s.AllowedOrigins, origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-Id")
 		}
 
 		if r.Method == http.MethodOptions {

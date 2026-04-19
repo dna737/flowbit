@@ -11,13 +11,9 @@ import (
 	"google.golang.org/genai"
 )
 
-const systemPrompt = `You are a job dispatcher. Given a plain-English request, respond with ONLY valid JSON:
-{"job_type": "<one of: echo, email, image_resize, url_scrape, fail>", "parameters": {<relevant key-value pairs>}}
-No explanation. No markdown. JSON only.`
-
 // textGenerator abstracts the Gemini model call (injectable for tests).
 type textGenerator interface {
-	GenerateContent(ctx context.Context, prompt string) (string, error)
+	GenerateContent(ctx context.Context, systemInstruction, userPrompt string) (string, error)
 }
 
 // GeminiDispatcher implements Dispatcher using the Gemini API.
@@ -47,16 +43,16 @@ type geminiModel struct {
 	models []string
 }
 
-func (g *geminiModel) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (g *geminiModel) GenerateContent(ctx context.Context, systemInstruction, userPrompt string) (string, error) {
 	cfg := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: systemPrompt}},
+			Parts: []*genai.Part{{Text: systemInstruction}},
 		},
 		ResponseMIMEType: "application/json",
 	}
 	var lastErr error
 	for i, m := range g.models {
-		resp, err := g.client.Models.GenerateContent(ctx, m, genai.Text(prompt), cfg)
+		resp, err := g.client.Models.GenerateContent(ctx, m, genai.Text(userPrompt), cfg)
 		if err != nil {
 			lastErr = err
 			if i < len(g.models)-1 && isRetryable(err) {
@@ -95,9 +91,76 @@ func isRetryable(err error) bool {
 		strings.Contains(s, "overloaded")
 }
 
+func buildSystemPrompt(jobTypes []string, categories []string) (string, error) {
+	if len(jobTypes) == 0 {
+		return "", errors.New("jobTypes required for system prompt")
+	}
+	typeList := strings.Join(jobTypes, ", ")
+	base := fmt.Sprintf(`You are a job dispatcher. Given a plain-English request, respond with ONLY valid JSON:
+{"job_type": "<one of: %s>", "parameters": {<relevant key-value pairs>}}
+No explanation. No markdown. JSON only.`, typeList)
+	if len(categories) == 0 {
+		return base, nil
+	}
+	var b strings.Builder
+	b.WriteString(base)
+	b.WriteString("\n\nThe user has configured the following category labels. You MUST set parameters[\"category\"] to exactly one string from this list (verbatim spelling as shown):\n")
+	for _, c := range categories {
+		b.WriteString("- ")
+		b.WriteString(c)
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
+}
+
+func normalizeJobType(raw string, allowed []string) (string, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", fmt.Errorf("%w: missing job_type", ErrAIParseFailed)
+	}
+	for _, a := range allowed {
+		if strings.EqualFold(s, strings.TrimSpace(a)) {
+			return a, nil
+		}
+	}
+	return "", fmt.Errorf("%w: job_type must be one of the allowed values", ErrAIParseFailed)
+}
+
+func normalizeCategoryInParameters(params map[string]any, allowed []string) error {
+	if len(allowed) == 0 {
+		return nil
+	}
+	v, ok := params["category"]
+	if !ok || v == nil {
+		return fmt.Errorf("%w: missing parameters[\"category\"]", ErrAIParseFailed)
+	}
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("%w: parameters[\"category\"] must be a string", ErrAIParseFailed)
+	}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("%w: parameters[\"category\"] must be non-empty", ErrAIParseFailed)
+	}
+	for _, a := range allowed {
+		if strings.EqualFold(s, strings.TrimSpace(a)) {
+			params["category"] = a
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: parameters[\"category\"] must be one of the configured labels", ErrAIParseFailed)
+}
+
 // Dispatch calls Gemini with the prompt and parses the JSON response into a DispatchResult.
-func (d *GeminiDispatcher) Dispatch(ctx context.Context, prompt string) (DispatchResult, error) {
-	raw, err := d.gen.GenerateContent(ctx, prompt)
+func (d *GeminiDispatcher) Dispatch(ctx context.Context, prompt string, categories []string, jobTypes []string) (DispatchResult, error) {
+	if len(jobTypes) == 0 {
+		return DispatchResult{}, fmt.Errorf("%w: no allowed job types", ErrAIParseFailed)
+	}
+	system, err := buildSystemPrompt(jobTypes, categories)
+	if err != nil {
+		return DispatchResult{}, fmt.Errorf("%w: %v", ErrAIParseFailed, err)
+	}
+	raw, err := d.gen.GenerateContent(ctx, system, prompt)
 	if err != nil {
 		return DispatchResult{}, fmt.Errorf("%w: %v", ErrAIParseFailed, err)
 	}
@@ -105,8 +168,16 @@ func (d *GeminiDispatcher) Dispatch(ctx context.Context, prompt string) (Dispatc
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		return DispatchResult{}, fmt.Errorf("%w: %v", ErrAIParseFailed, err)
 	}
-	if result.JobType == "" {
-		return DispatchResult{}, fmt.Errorf("%w: missing job_type", ErrAIParseFailed)
+	canonical, err := normalizeJobType(result.JobType, jobTypes)
+	if err != nil {
+		return DispatchResult{}, err
+	}
+	result.JobType = canonical
+	if result.Parameters == nil {
+		result.Parameters = map[string]any{}
+	}
+	if err := normalizeCategoryInParameters(result.Parameters, categories); err != nil {
+		return DispatchResult{}, err
 	}
 	return result, nil
 }

@@ -58,7 +58,7 @@ function Dashboard() {
         backgroundColor: "background.default",
       }}
     >
-      <MetricsStrip jobs={sortedJobs} />
+      <MetricsStrip jobs={sortedJobs} connectionStatus={connectionStatus} />
       <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
         <PipelineBoard
           jobs={sortedJobs}
@@ -79,7 +79,6 @@ function Dashboard() {
         onWatchlistReplaceJobId={(fromId, toId) =>
           setWatchlist((current) => replaceWatchlistJobId(current, fromId, toId))
         }
-        connectionStatus={connectionStatus}
       />
     </Box>
   );

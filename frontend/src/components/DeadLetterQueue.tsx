@@ -65,7 +65,13 @@ export function DeadLetterQueue({ jobs }: { jobs: Job[] }) {
             </Box>
           </Stack>
         </AccordionSummary>
-        <AccordionDetails sx={{ px: `${tokens.spacing.lg}px`, pt: 0 }}>
+        <AccordionDetails
+          sx={{
+            px: `${tokens.spacing.lg}px`,
+            pt: 0,
+            overflow: "hidden",
+          }}
+        >
           {dlq.length === 0 ? (
             <Typography
               sx={{ color: tokens.color.textMuted, fontSize: 12, py: 1 }}
@@ -73,56 +79,63 @@ export function DeadLetterQueue({ jobs }: { jobs: Job[] }) {
               No failed jobs.
             </Typography>
           ) : (
-            <Stack spacing={0.5}>
-              {dlq.map((job) => (
-                <Stack
-                  key={job.id}
-                  direction="row"
-                  alignItems="center"
-                  spacing={1}
-                  sx={{ py: 0.75 }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: tokens.font.mono,
-                      fontSize: 11,
-                      color: tokens.color.textSecondary,
-                    }}
+            <Box
+              sx={{
+                maxHeight: "min(360px, 40vh)",
+                overflowY: "auto",
+              }}
+            >
+              <Stack spacing={0.5}>
+                {dlq.map((job) => (
+                  <Stack
+                    key={job.id}
+                    direction="row"
+                    alignItems="center"
+                    spacing={1}
+                    sx={{ py: 0.75 }}
                   >
-                    {job.id.slice(0, 8)}
-                  </Typography>
-                  <Box
-                    sx={{
-                      backgroundColor: tokens.color.statusFailedMuted,
-                      color: tokens.color.statusFailed,
-                      fontFamily: tokens.font.mono,
-                      fontSize: 10,
-                      fontWeight: 500,
-                      px: "6px",
-                      py: "2px",
-                      borderRadius: `${tokens.radius.sm}px`,
-                    }}
-                  >
-                    {job.job_type}
-                  </Box>
-                  <Box sx={{ flex: 1 }} />
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={() => setPayload(job)}
-                    sx={{
-                      color: tokens.color.accentBlue,
-                      fontSize: 11,
-                      fontWeight: 500,
-                      minWidth: 0,
-                      px: 0.5,
-                    }}
-                  >
-                    view payload
-                  </Button>
-                </Stack>
-              ))}
-            </Stack>
+                    <Typography
+                      sx={{
+                        fontFamily: tokens.font.mono,
+                        fontSize: 11,
+                        color: tokens.color.textSecondary,
+                      }}
+                    >
+                      {job.id.slice(0, 8)}
+                    </Typography>
+                    <Box
+                      sx={{
+                        backgroundColor: tokens.color.statusFailedMuted,
+                        color: tokens.color.statusFailed,
+                        fontFamily: tokens.font.mono,
+                        fontSize: 10,
+                        fontWeight: 500,
+                        px: "6px",
+                        py: "2px",
+                        borderRadius: `${tokens.radius.sm}px`,
+                      }}
+                    >
+                      {job.job_type}
+                    </Box>
+                    <Box sx={{ flex: 1 }} />
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setPayload(job)}
+                      sx={{
+                        color: tokens.color.accentBlue,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        minWidth: 0,
+                        px: 0.5,
+                      }}
+                    >
+                      view payload
+                    </Button>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
           )}
         </AccordionDetails>
       </Accordion>

@@ -18,8 +18,29 @@ type fakeDispatcher struct {
 	err    error
 }
 
-func (f *fakeDispatcher) Dispatch(_ context.Context, _ string) (dispatcher.DispatchResult, error) {
+func (f *fakeDispatcher) Dispatch(_ context.Context, _ string, _ []string, _ []string) (dispatcher.DispatchResult, error) {
 	return f.result, f.err
+}
+
+type fakeJobTypes struct{}
+
+func (*fakeJobTypes) GetAllowedJobTypes(context.Context) ([]string, error) {
+	return []string{"echo", "email", "image_resize", "url_scrape", "fail"}, nil
+}
+
+type fakeCategoryStore struct{}
+
+func (f *fakeCategoryStore) GetCategories(_ context.Context, _ string) ([]string, error) {
+	return []string{}, nil
+}
+
+func (f *fakeCategoryStore) SetCategories(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+
+func withUserID(req *http.Request) *http.Request {
+	req.Header.Set("X-User-Id", "test-user")
+	return req
 }
 
 func TestHandleDispatch_nilDispatcher(t *testing.T) {
@@ -37,9 +58,11 @@ func TestHandleDispatch_emptyPrompt(t *testing.T) {
 		Store:        &fakeStore{},
 		Publisher:    &fakePublisher{},
 		AIDispatcher: &fakeDispatcher{},
+		Categories:   &fakeCategoryStore{},
+		JobTypes:     &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
@@ -53,9 +76,11 @@ func TestHandleDispatch_dispatcherError(t *testing.T) {
 		AIDispatcher: &fakeDispatcher{
 			err: errors.New("api down"),
 		},
+		Categories: &fakeCategoryStore{},
+		JobTypes:   &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("want 502 got %d", rr.Code)
@@ -88,9 +113,11 @@ func TestHandleDispatch_success(t *testing.T) {
 				Parameters: map[string]any{"to": "bob@example.com"},
 			},
 		},
+		Categories: &fakeCategoryStore{},
+		JobTypes:   &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())

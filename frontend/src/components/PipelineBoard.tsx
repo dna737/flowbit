@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { LayoutGroup } from "motion/react";
 
 import { StatusColumn } from "./StatusColumn";
 import type { Job, JobStatus } from "../jobs/types";
@@ -58,15 +59,17 @@ export function PipelineBoard({
         alignItems: "stretch",
       }}
     >
-      {(Object.keys(columnLabels) as JobStatus[]).map((status) => (
-        <StatusColumn
-          key={status}
-          title={columnLabels[status]}
-          status={status}
-          jobs={byStatus[status]}
-          latestTrackedJobId={latestTrackedJobId}
-        />
-      ))}
+      <LayoutGroup id="pipeline-board">
+        {(Object.keys(columnLabels) as JobStatus[]).map((status) => (
+          <StatusColumn
+            key={status}
+            title={columnLabels[status]}
+            status={status}
+            jobs={byStatus[status]}
+            latestTrackedJobId={latestTrackedJobId}
+          />
+        ))}
+      </LayoutGroup>
     </Box>
   );
 }
