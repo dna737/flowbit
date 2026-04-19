@@ -44,7 +44,7 @@ func main() {
 	usersRepo := repo.NewUsersRepo(pool, dispatcherConfigRepo)
 	hub := realtime.NewHub()
 	go hub.Run(ctx)
-	go realtime.Listen(ctx, cfg.DatabaseURL, hub)
+	go realtime.Listen(ctx, cfg.DatabaseURL, hub, jobsRepo)
 
 	writer, err := kafka.NewWriter(kafka.Config{
 		Brokers:  cfg.KafkaBrokers,

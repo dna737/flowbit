@@ -17,21 +17,21 @@ import (
 )
 
 type fakeStore struct {
-	createJob func(ctx context.Context, jobType string, parameters map[string]any, status string) (models.Job, error)
-	getJob    func(ctx context.Context, id string) (models.Job, error)
+	createJob func(ctx context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error)
+	getJob    func(ctx context.Context, userID, id string) (models.Job, error)
 	update    func(ctx context.Context, id string, status string, lastError *string) error
 }
 
-func (f *fakeStore) CreateJob(ctx context.Context, jobType string, parameters map[string]any, status string) (models.Job, error) {
+func (f *fakeStore) CreateJob(ctx context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error) {
 	if f.createJob != nil {
-		return f.createJob(ctx, jobType, parameters, status)
+		return f.createJob(ctx, userID, jobType, parameters, status)
 	}
 	return models.Job{}, errors.New("not implemented")
 }
 
-func (f *fakeStore) GetJobByID(ctx context.Context, id string) (models.Job, error) {
+func (f *fakeStore) GetJobByUserAndID(ctx context.Context, userID, id string) (models.Job, error) {
 	if f.getJob != nil {
-		return f.getJob(ctx, id)
+		return f.getJob(ctx, userID, id)
 	}
 	return models.Job{}, repo.ErrJobNotFound
 }
@@ -55,21 +55,21 @@ func (f *fakePublisher) PublishJob(ctx context.Context, msg queue.JobMessage) er
 }
 
 type fakeLister struct {
-	listJobs func(ctx context.Context, limit int) ([]models.Job, error)
+	listJobs func(ctx context.Context, userID string, limit int) ([]models.Job, error)
 }
 
-func (f *fakeLister) ListJobs(ctx context.Context, limit int) ([]models.Job, error) {
+func (f *fakeLister) ListJobsByUser(ctx context.Context, userID string, limit int) ([]models.Job, error) {
 	if f.listJobs != nil {
-		return f.listJobs(ctx, limit)
+		return f.listJobs(ctx, userID, limit)
 	}
 	return nil, nil
 }
 
 type fakeHub struct{}
 
-func (fakeHub) Register(*realtime.Client)   {}
-func (fakeHub) Unregister(*realtime.Client) {}
-func (fakeHub) Broadcast([]byte)            {}
+func (fakeHub) Register(*realtime.Client)        {}
+func (fakeHub) Unregister(*realtime.Client)      {}
+func (fakeHub) BroadcastToUser(string, []byte)   {}
 
 func TestHandleHealthz(t *testing.T) {
 	s := &Server{}
@@ -81,10 +81,20 @@ func TestHandleHealthz(t *testing.T) {
 	}
 }
 
-func TestHandleCreateJob_invalidJSON(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}}
+func TestHandleCreateJob_missingUserID(t *testing.T) {
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`))
+	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"echo"}`))
+	s.HandleCreateJob(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleCreateJob_invalidJSON(t *testing.T) {
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	rr := httptest.NewRecorder()
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -92,13 +102,23 @@ func TestHandleCreateJob_invalidJSON(t *testing.T) {
 }
 
 func TestHandleCreateJob_missingJobType(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}}
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
 	body := `{"parameters":{}}`
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
+	}
+}
+
+func TestHandleCreateJob_disallowedJobType(t *testing.T) {
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	rr := httptest.NewRecorder()
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
+	s.HandleCreateJob(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
 	}
 }
 
@@ -116,7 +136,10 @@ func TestHandleCreateJob_success(t *testing.T) {
 	var published queue.JobMessage
 	s := &Server{
 		Store: &fakeStore{
-			createJob: func(_ context.Context, jobType string, parameters map[string]any, status string) (models.Job, error) {
+			createJob: func(_ context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error) {
+				if userID != "test-user" {
+					t.Fatalf("unexpected userID %q", userID)
+				}
 				if jobType != "echo" || status != models.JobStatusPending {
 					t.Fatalf("unexpected create args")
 				}
@@ -129,10 +152,11 @@ func TestHandleCreateJob_success(t *testing.T) {
 				return nil
 			},
 		},
+		JobTypes: &fakeJobTypes{},
 	}
 	body := `{"job_type":"echo","parameters":{"k":"v"}}`
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
@@ -147,7 +171,7 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 	var updatedID, updatedStatus string
 	s := &Server{
 		Store: &fakeStore{
-			createJob: func(context.Context, string, map[string]any, string) (models.Job, error) {
+			createJob: func(context.Context, string, string, map[string]any, string) (models.Job, error) {
 				return job, nil
 			},
 			update: func(_ context.Context, id string, status string, lastError *string) error {
@@ -163,9 +187,10 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 				return errors.New("broker down")
 			},
 		},
+		JobTypes: &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"echo"}`))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"echo"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("want 500 got %d", rr.Code)
@@ -175,16 +200,27 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 	}
 }
 
+func TestHandleGetJob_missingUserID(t *testing.T) {
+	s := &Server{Store: &fakeStore{}}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/jobs/x", nil)
+	req.SetPathValue("id", "550e8400-e29b-41d4-a716-446655440001")
+	s.HandleGetJob(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 got %d", rr.Code)
+	}
+}
+
 func TestHandleGetJob_notFound(t *testing.T) {
 	s := &Server{
 		Store: &fakeStore{
-			getJob: func(context.Context, string) (models.Job, error) {
+			getJob: func(context.Context, string, string) (models.Job, error) {
 				return models.Job{}, repo.ErrJobNotFound
 			},
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/jobs/x", nil)
+	req := withUserID(httptest.NewRequest(http.MethodGet, "/jobs/x", nil))
 	req.SetPathValue("id", "550e8400-e29b-41d4-a716-446655440001")
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -204,7 +240,10 @@ func TestHandleGetJob_ok(t *testing.T) {
 	}
 	s := &Server{
 		Store: &fakeStore{
-			getJob: func(_ context.Context, id string) (models.Job, error) {
+			getJob: func(_ context.Context, userID, id string) (models.Job, error) {
+				if userID != "test-user" {
+					t.Fatalf("userID %q", userID)
+				}
 				if id != want.ID {
 					t.Fatalf("id %q", id)
 				}
@@ -213,7 +252,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil)
+	req := withUserID(httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil))
 	req.SetPathValue("id", want.ID)
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusOK {
@@ -225,6 +264,22 @@ func TestHandleGetJob_ok(t *testing.T) {
 	}
 	if got.ID != want.ID || got.Status != want.Status {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestServerHandler_blocksDisallowedOrigin(t *testing.T) {
+	s := &Server{
+		AllowedOrigins: []string{"http://localhost:5173"},
+	}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("want 403 got %d", rr.Code)
 	}
 }
 

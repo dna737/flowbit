@@ -6,29 +6,33 @@ import (
 	"time"
 )
 
-func TestHubBroadcastAndUnregister(t *testing.T) {
+func TestHubBroadcastsOnlyToOwningUser(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	hub := NewHub()
 	go hub.Run(ctx)
 
-	clientOne := &Client{send: make(chan []byte, 2)}
-	clientTwo := &Client{send: make(chan []byte, 2)}
+	alice1 := &Client{userID: "alice", send: make(chan []byte, 2)}
+	alice2 := &Client{userID: "alice", send: make(chan []byte, 2)}
+	bob := &Client{userID: "bob", send: make(chan []byte, 2)}
 
-	hub.Register(clientOne)
-	hub.Register(clientTwo)
+	hub.Register(alice1)
+	hub.Register(alice2)
+	hub.Register(bob)
 
-	hub.Broadcast([]byte(`{"status":"running"}`))
+	hub.BroadcastToUser("alice", []byte(`{"status":"running"}`))
 
-	assertReceives(t, clientOne.send, `{"status":"running"}`)
-	assertReceives(t, clientTwo.send, `{"status":"running"}`)
+	assertReceives(t, alice1.send, `{"status":"running"}`)
+	assertReceives(t, alice2.send, `{"status":"running"}`)
+	assertNoReceive(t, bob.send)
 
-	hub.Unregister(clientOne)
-	hub.Broadcast([]byte(`{"status":"succeeded"}`))
+	hub.Unregister(alice1)
+	hub.BroadcastToUser("alice", []byte(`{"status":"succeeded"}`))
 
-	assertClosed(t, clientOne.send)
-	assertReceives(t, clientTwo.send, `{"status":"succeeded"}`)
+	assertClosed(t, alice1.send)
+	assertReceives(t, alice2.send, `{"status":"succeeded"}`)
+	assertNoReceive(t, bob.send)
 }
 
 func TestHubDropsSlowClient(t *testing.T) {
@@ -38,14 +42,14 @@ func TestHubDropsSlowClient(t *testing.T) {
 	hub := NewHub()
 	go hub.Run(ctx)
 
-	slow := &Client{send: make(chan []byte, 1)}
-	fast := &Client{send: make(chan []byte, 2)}
+	slow := &Client{userID: "alice", send: make(chan []byte, 1)}
+	fast := &Client{userID: "alice", send: make(chan []byte, 2)}
 
 	hub.Register(slow)
 	hub.Register(fast)
 
-	hub.Broadcast([]byte(`{"status":"retrying"}`))
-	hub.Broadcast([]byte(`{"status":"failed"}`))
+	hub.BroadcastToUser("alice", []byte(`{"status":"retrying"}`))
+	hub.BroadcastToUser("alice", []byte(`{"status":"failed"}`))
 
 	assertReceives(t, fast.send, `{"status":"retrying"}`)
 	assertReceives(t, fast.send, `{"status":"failed"}`)
@@ -76,5 +80,19 @@ func assertClosed(t *testing.T, ch <-chan []byte) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for close")
+	}
+}
+
+func assertNoReceive(t *testing.T, ch <-chan []byte) {
+	t.Helper()
+
+	select {
+	case got, ok := <-ch:
+		if ok {
+			t.Fatalf("did not expect payload, got %q", string(got))
+		}
+		t.Fatal("did not expect channel close")
+	case <-time.After(50 * time.Millisecond):
+		// no message — good
 	}
 }

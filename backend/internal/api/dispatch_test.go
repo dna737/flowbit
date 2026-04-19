@@ -99,7 +99,7 @@ func TestHandleDispatch_success(t *testing.T) {
 	}
 	s := &Server{
 		Store: &fakeStore{
-			createJob: func(_ context.Context, jobType string, _ map[string]any, _ string) (models.Job, error) {
+			createJob: func(_ context.Context, _, jobType string, _ map[string]any, _ string) (models.Job, error) {
 				if jobType != "email" {
 					t.Fatalf("unexpected job_type: %s", jobType)
 				}

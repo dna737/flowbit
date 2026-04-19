@@ -31,17 +31,18 @@ func NewJobsRepo(pool dbPool) *JobsRepo {
 	return &JobsRepo{pool: pool}
 }
 
-func (r *JobsRepo) CreateJob(ctx context.Context, jobType string, parameters map[string]any, status string) (models.Job, error) {
+// CreateJob persists a new job owned by userID.
+func (r *JobsRepo) CreateJob(ctx context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error) {
 	payload, err := json.Marshal(parameters)
 	if err != nil {
 		return models.Job{}, fmt.Errorf("marshal parameters: %w", err)
 	}
 
 	row := r.pool.QueryRow(ctx, `
-		INSERT INTO jobs (job_type, parameters, status)
-		VALUES ($1, $2::jsonb, $3)
+		INSERT INTO jobs (user_id, job_type, parameters, status)
+		VALUES ($1, $2, $3::jsonb, $4)
 		RETURNING id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
-	`, jobType, string(payload), status)
+	`, userID, jobType, string(payload), status)
 
 	out, err := scanJob(row)
 	if err != nil {
@@ -50,6 +51,8 @@ func (r *JobsRepo) CreateJob(ctx context.Context, jobType string, parameters map
 	return out, nil
 }
 
+// GetJobByID fetches a job by id without scoping. Internal use only (e.g. realtime listener);
+// API handlers must use GetJobByUserAndID to prevent cross-user reads.
 func (r *JobsRepo) GetJobByID(ctx context.Context, id string) (models.Job, error) {
 	if _, err := uuid.Parse(id); err != nil {
 		return models.Job{}, ErrJobNotFound
@@ -71,7 +74,31 @@ func (r *JobsRepo) GetJobByID(ctx context.Context, id string) (models.Job, error
 	return out, nil
 }
 
-func (r *JobsRepo) ListJobs(ctx context.Context, limit int) ([]models.Job, error) {
+// GetJobByUserAndID fetches a job only if it belongs to userID. Returns ErrJobNotFound
+// for both "no such id" and "id belongs to another user" so we don't leak existence.
+func (r *JobsRepo) GetJobByUserAndID(ctx context.Context, userID, id string) (models.Job, error) {
+	if _, err := uuid.Parse(id); err != nil {
+		return models.Job{}, ErrJobNotFound
+	}
+
+	row := r.pool.QueryRow(ctx, `
+		SELECT id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
+		FROM jobs
+		WHERE id = $1 AND user_id = $2
+	`, id, userID)
+
+	out, err := scanJob(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Job{}, ErrJobNotFound
+		}
+		return models.Job{}, fmt.Errorf("query job: %w", err)
+	}
+	return out, nil
+}
+
+// ListJobsByUser returns the most recent jobs owned by userID, capped at limit.
+func (r *JobsRepo) ListJobsByUser(ctx context.Context, userID string, limit int) ([]models.Job, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -79,9 +106,10 @@ func (r *JobsRepo) ListJobs(ctx context.Context, limit int) ([]models.Job, error
 	rows, err := r.pool.Query(ctx, `
 		SELECT id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
 		FROM jobs
+		WHERE user_id = $1
 		ORDER BY created_at DESC
-		LIMIT $1
-	`, limit)
+		LIMIT $2
+	`, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list jobs: %w", err)
 	}
@@ -114,6 +142,9 @@ func scanJob(row pgx.Row) (models.Job, error) {
 	return out, nil
 }
 
+// UpdateJobStatus updates a job's status and emits a small NOTIFY payload (`{id,user_id}`)
+// so the realtime listener can fan out to that user's WS clients. Sending only the id
+// keeps NOTIFY well under Postgres' ~8000-byte payload cap regardless of parameter size.
 func (r *JobsRepo) UpdateJobStatus(ctx context.Context, id string, status string, lastError *string) error {
 	row := r.pool.QueryRow(ctx, `
 		WITH updated AS (
@@ -123,10 +154,13 @@ func (r *JobsRepo) UpdateJobStatus(ctx context.Context, id string, status string
 			    attempts   = CASE WHEN $2 = 'running' THEN attempts + 1 ELSE attempts END,
 			    updated_at = NOW()
 			WHERE id = $1
-			RETURNING id::text, job_type, parameters, status, attempts, last_error, created_at, updated_at
+			RETURNING id::text AS id, user_id
 		)
 		SELECT updated.id
-		FROM updated, LATERAL pg_notify('job_status', row_to_json(updated)::text)
+		FROM updated, LATERAL pg_notify(
+			'job_status',
+			json_build_object('id', updated.id, 'user_id', updated.user_id)::text
+		)
 	`, id, status, lastError)
 
 	var updatedID string

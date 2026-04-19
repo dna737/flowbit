@@ -71,9 +71,9 @@ export async function postJob(
 ): Promise<Job> {
   const response = await fetch(`${apiBaseUrl}/jobs`, {
     method: "POST",
-    headers: {
+    headers: withUserHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({ job_type: type, parameters: params }),
   });
 

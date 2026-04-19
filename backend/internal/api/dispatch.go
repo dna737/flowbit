@@ -74,7 +74,7 @@ func (s *Server) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		result.Parameters = map[string]any{}
 	}
 
-	job, err := s.Store.CreateJob(ctx, result.JobType, result.Parameters, models.JobStatusPending)
+	job, err := s.Store.CreateJob(ctx, userID, result.JobType, result.Parameters, models.JobStatusPending)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to persist job"})
 		return

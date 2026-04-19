@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState, type Dispatch } from "react";
 
+import { getUserId } from "../identity/userId";
 import type { Job, JobsAction, SnapshotMessage } from "../jobs/types";
 
 const defaultWsUrl = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080/ws";
 const maxReconnectDelayMs = 30000;
+
+// Append user_id as a query param because browsers can't set custom headers on
+// the WebSocket handshake. The backend uses it to scope the snapshot/broadcasts.
+function buildWsUrl(): string {
+  const sep = defaultWsUrl.includes("?") ? "&" : "?";
+  return `${defaultWsUrl}${sep}user_id=${encodeURIComponent(getUserId())}`;
+}
 
 export type ConnectionStatus =
   | "connecting"
@@ -31,7 +39,7 @@ export function useJobSocket(dispatch: Dispatch<JobsAction>) {
       clearReconnectTimer();
       setStatus(socket ? "reconnecting" : "connecting");
 
-      socket = new WebSocket(defaultWsUrl);
+      socket = new WebSocket(buildWsUrl());
 
       socket.onopen = () => {
         reconnectDelayRef.current = 1000;

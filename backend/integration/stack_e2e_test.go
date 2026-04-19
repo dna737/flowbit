@@ -59,7 +59,7 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 	}
 
 	store := repo.NewJobsRepo(pool)
-	job, err := store.CreateJob(ctx, "echo", map[string]any{"e2e": true}, models.JobStatusPending)
+	job, err := store.CreateJob(ctx, "e2e-user", "echo", map[string]any{"e2e": true}, models.JobStatusPending)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,11 +24,11 @@ func TestJobsRepo_CreateJob(t *testing.T) {
 		AddRow("550e8400-e29b-41d4-a716-446655440000", "echo", []byte(`{"k":"v"}`), "pending", 0, nil, t0, t0)
 
 	mock.ExpectQuery(`INSERT INTO jobs`).
-		WithArgs("echo", pgxmock.AnyArg(), models.JobStatusPending).
+		WithArgs("alice", "echo", pgxmock.AnyArg(), models.JobStatusPending).
 		WillReturnRows(rows)
 
 	r := NewJobsRepo(mock)
-	job, err := r.CreateJob(context.Background(), "echo", map[string]any{"k": "v"}, models.JobStatusPending)
+	job, err := r.CreateJob(context.Background(), "alice", "echo", map[string]any{"k": "v"}, models.JobStatusPending)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestJobsRepo_UpdateJobStatus_success(t *testing.T) {
 	}
 }
 
-func TestJobsRepo_ListJobs(t *testing.T) {
+func TestJobsRepo_ListJobsByUser(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	if err != nil {
 		t.Fatal(err)
@@ -128,11 +128,11 @@ func TestJobsRepo_ListJobs(t *testing.T) {
 		AddRow("550e8400-e29b-41d4-a716-446655440011", "fail", []byte(`{"kind":"older"}`), models.JobStatusFailed, 3, &lastError, now.Add(-time.Minute), now.Add(-time.Minute))
 
 	mock.ExpectQuery(`SELECT id::text, job_type, parameters`).
-		WithArgs(2).
+		WithArgs("alice", 2).
 		WillReturnRows(rows)
 
 	r := NewJobsRepo(mock)
-	jobs, err := r.ListJobs(context.Background(), 2)
+	jobs, err := r.ListJobsByUser(context.Background(), "alice", 2)
 	if err != nil {
 		t.Fatal(err)
 	}

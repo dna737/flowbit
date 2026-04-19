@@ -45,7 +45,7 @@ func TestPostgresRepo_createJob_roundTrip(t *testing.T) {
 	}
 
 	r := repo.NewJobsRepo(pool)
-	job, err := r.CreateJob(ctx, "echo", map[string]any{"x": 1.0}, models.JobStatusPending)
+	job, err := r.CreateJob(ctx, "alice", "echo", map[string]any{"x": 1.0}, models.JobStatusPending)
 	if err != nil {
 		t.Fatal(err)
 	}

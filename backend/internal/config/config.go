@@ -42,8 +42,8 @@ func Load() (Config, error) {
 		KafkaConsumerGrp: getenv("KAFKA_CONSUMER_GROUP", "flowbit-workers"),
 		ApplyMigrations:  getenvBool("APPLY_MIGRATIONS", true),
 		GeminiAPIKey:     getenv("GEMINI_API_KEY", ""),
-		GeminiModel:      getenv("GEMINI_MODEL", "gemini-3-flash-preview"),
-		GeminiFallbacks:  splitCSV(getenv("GEMINI_MODEL_FALLBACKS", "gemini-flash-latest,gemini-2.5-flash,gemini-2.5-pro,gemini-2.0-flash,gemini-2.0-flash-lite")),
+		GeminiModel:      getenv("GEMINI_MODEL", "gemini-flash-latest"),
+		GeminiFallbacks:  splitCSV(getenv("GEMINI_MODEL_FALLBACKS", "gemini-2.5-flash,gemini-2.5-pro,gemini-2.0-flash,gemini-2.0-flash-lite")),
 	}
 
 	if cfg.DatabaseURL == "" {

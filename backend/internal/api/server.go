@@ -18,9 +18,10 @@ import (
 )
 
 // JobStore is the persistence surface needed by the HTTP API.
+// Reads and writes are scoped to a userID so callers cannot touch other users' jobs.
 type JobStore interface {
-	CreateJob(ctx context.Context, jobType string, parameters map[string]any, status string) (models.Job, error)
-	GetJobByID(ctx context.Context, id string) (models.Job, error)
+	CreateJob(ctx context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error)
+	GetJobByUserAndID(ctx context.Context, userID, id string) (models.Job, error)
 	UpdateJobStatus(ctx context.Context, id string, status string, lastError *string) error
 }
 
@@ -43,7 +44,7 @@ type AllowedJobTypesSource interface {
 type Hub interface {
 	Register(*realtime.Client)
 	Unregister(*realtime.Client)
-	Broadcast([]byte)
+	BroadcastToUser(userID string, payload []byte)
 }
 
 // Server wires HTTP handlers to a store and publisher.
@@ -87,6 +88,11 @@ func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req createJobRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -98,7 +104,8 @@ func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 		return
 	}
-	if strings.TrimSpace(req.JobType) == "" {
+	jobType := strings.TrimSpace(req.JobType)
+	if jobType == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "job_type is required"})
 		return
 	}
@@ -109,7 +116,25 @@ func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	job, err := s.Store.CreateJob(ctx, req.JobType, req.Parameters, models.JobStatusPending)
+	// Validate job_type against the same dispatcher_config allowlist used by /dispatch
+	// so direct POST /jobs callers cannot push arbitrary types into the queue/DLQ.
+	if s.JobTypes == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "job types not configured"})
+		return
+	}
+	allowed, err := s.JobTypes.GetAllowedJobTypes(ctx)
+	if err != nil || len(allowed) == 0 {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load allowed job types"})
+		return
+	}
+	canonical, ok := matchAllowed(jobType, allowed)
+	if !ok {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "job_type not allowed"})
+		return
+	}
+	jobType = canonical
+
+	job, err := s.Store.CreateJob(ctx, userID, jobType, req.Parameters, models.JobStatusPending)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to persist job"})
 		return
@@ -131,6 +156,11 @@ func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleGetJob(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "job id is required"})
@@ -140,7 +170,7 @@ func (s *Server) HandleGetJob(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	job, err := s.Store.GetJobByID(ctx, id)
+	job, err := s.Store.GetJobByUserAndID(ctx, userID, id)
 	if err != nil {
 		if errors.Is(err, repo.ErrJobNotFound) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "job not found"})
@@ -150,6 +180,17 @@ func (s *Server) HandleGetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, job)
+}
+
+// matchAllowed returns the canonical (case-preserved) entry from allowed equal to s,
+// case-insensitively, plus ok=true. ok=false when nothing matches.
+func matchAllowed(s string, allowed []string) (string, bool) {
+	for _, a := range allowed {
+		if strings.EqualFold(s, strings.TrimSpace(a)) {
+			return a, true
+		}
+	}
+	return "", false
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -163,7 +204,15 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 func (s *Server) withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
-		if origin != "" && slices.Contains(s.AllowedOrigins, origin) {
+		// Cross-origin requests carry an Origin header. If it's set and not in our
+		// allowlist, refuse the request outright instead of relying on the browser
+		// to enforce CORS — this also blocks non-browser clients spoofing an Origin.
+		if origin != "" {
+			if !slices.Contains(s.AllowedOrigins, origin) {
+				w.Header().Set("Vary", "Origin")
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin not allowed"})
+				return
+			}
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")

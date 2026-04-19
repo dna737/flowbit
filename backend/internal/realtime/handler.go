@@ -19,8 +19,9 @@ const (
 	writeTimeout  = 5 * time.Second
 )
 
+// JobLister returns the most recent jobs owned by a single user.
 type JobLister interface {
-	ListJobs(ctx context.Context, limit int) ([]models.Job, error)
+	ListJobsByUser(ctx context.Context, userID string, limit int) ([]models.Job, error)
 }
 
 type ClientHub interface {
@@ -33,6 +34,9 @@ type snapshotMessage struct {
 	Jobs []models.Job `json:"jobs"`
 }
 
+// Handler returns the GET /ws handler. The user_id query parameter is required
+// (browsers can't set custom headers on WebSocket handshakes); the snapshot and
+// all subsequent broadcasts are scoped to that user.
 func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.HandlerFunc {
 	originPatterns := allowedOriginPatterns(allowedOrigins)
 
@@ -42,12 +46,21 @@ func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.Hand
 			return
 		}
 
+		userID := strings.TrimSpace(r.URL.Query().Get("user_id"))
+		if userID == "" {
+			http.Error(w, "user_id query parameter is required", http.StatusBadRequest)
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-		jobs, err := lister.ListJobs(ctx, snapshotLimit)
+		jobs, err := lister.ListJobsByUser(ctx, userID, snapshotLimit)
 		cancel()
 		if err != nil {
 			http.Error(w, "failed to load jobs snapshot", http.StatusInternalServerError)
 			return
+		}
+		if jobs == nil {
+			jobs = []models.Job{}
 		}
 
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -57,7 +70,7 @@ func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.Hand
 			return
 		}
 
-		client := NewClient(conn)
+		client := NewClient(userID, conn)
 		hub.Register(client)
 		defer hub.Unregister(client)
 

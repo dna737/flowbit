@@ -80,7 +80,15 @@ func HandleJob(ctx context.Context, store Store, pub Publisher, msg queue.JobMes
 				logf("mark failed for %s: %v", msg.JobID, err)
 			}
 		}
-		payload, _ := json.Marshal(msg.Parameters)
+		payload, marshalErr := json.Marshal(msg.Parameters)
+		if marshalErr != nil {
+			// Don't write a corrupt payload to the DLQ; log and fall back to "{}"
+			// so the row still records job_id/error_message for operator triage.
+			if logf != nil {
+				logf("dlq marshal failed for %s: %v", msg.JobID, marshalErr)
+			}
+			payload = []byte("{}")
+		}
 		if err := store.WriteToDLQ(ctx, msg.JobID, msg.JobType, payload, lastError); err != nil {
 			if logf != nil {
 				logf("dlq write failed for %s: %v", msg.JobID, err)
