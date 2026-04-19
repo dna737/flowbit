@@ -1,0 +1,124 @@
+backend/internal/api/dispatch_test.go
+  473751181189fc67 21,25-45,61-62,65,79-80,83,116-117,120
+frontend/src/identity/userId.ts
+  473751181189fc67 1-130
+backend/internal/repo/users.go
+  473751181189fc67 1-74
+frontend/src/components/PipelineBoard.tsx
+  01752bc6f0c816e9 2,62-72
+frontend/src/components/MetricsStrip.tsx
+  473751181189fc67 1,3,6,10-16,28-29,33-41,66-69
+backend/internal/api/server.go
+  473751181189fc67 35-40,54-55,72-73,169-170
+backend/internal/dispatcher/dispatcher.go
+  473751181189fc67 18,20
+backend/internal/dispatcher/gemini_test.go
+  473751181189fc67 14,18-19,24,40,53,64,72-88,96-109,114-126
+frontend/src/App.tsx
+  473751181189fc67 61
+backend/internal/api/dispatch.go
+  473751181189fc67 37-41,45-67
+frontend/src/components/DeadLetterQueue.tsx
+  63421a2b90fd9599 68-74,82-95,97-138
+backend/internal/api/settings.go
+  473751181189fc67 1-107
+frontend/src/components/icons.tsx
+  473751181189fc67 94-102
+backend/internal/db/sql/users.sql
+  473751181189fc67 1-8
+backend/internal/db/sql/dispatcher_config.sql
+  473751181189fc67 1-9
+frontend/src/components/RightRail.tsx
+  63421a2b90fd9599 39,67
+backend/internal/api/settings_test.go
+  473751181189fc67 1-45
+frontend/src/components/JobCard.tsx
+  4dc3492f6762d08e 24
+  01752bc6f0c816e9 2,15,18-23,25-26,28-39,123
+backend/internal/api/user.go
+  473751181189fc67 1-16
+backend/cmd/api/main.go
+  473751181189fc67 43-44,76-77
+backend/internal/dispatcher/gemini.go
+  473751181189fc67 16,46,49,55,94-153,155-163,171-180
+backend/internal/repo/dispatcher_config.go
+  473751181189fc67 1-41
+frontend/src/api/client.ts
+  473751181189fc67 2,6-12,20,22,29-67
+frontend/src/components/CommandBar.tsx
+  473751181189fc67 1,6-10,14,17,20,28,39-43,58-66,75-120,237-387
+backend/internal/db/db.go
+  473751181189fc67 11,27-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "9529261fec55894c0ea4a7aa87d3c72b0246b4a2",
+  "prompts": {
+    "01752bc6f0c816e9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ea794e8-c156-4510-84c8-2286c93004d4",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 35,
+      "overriden_lines": 0
+    },
+    "473751181189fc67": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "15bfb059-7280-43ff-8e8f-4e1eac4777ba",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 548,
+      "total_deletions": 95,
+      "accepted_lines": 985,
+      "overriden_lines": 0
+    },
+    "483bc943135fc89b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d9924-8b3e-7361-bb03-beb280afba02",
+        "model": "gpt-5.4"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 181,
+      "overriden_lines": 0
+    },
+    "4dc3492f6762d08e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9e0795e-415f-43f5-85e0-09f5e2159a10",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "63421a2b90fd9599": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "50f2de79-939c-4c9c-9cfc-d7d82d3a6989",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 66,
+      "overriden_lines": 0
+    }
+  }
+}
