@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import { wakePostgres } from "./api/client";
 import { CommandBar } from "./components/CommandBar";
 import { MetricsStrip } from "./components/MetricsStrip";
 import { PipelineBoard } from "./components/PipelineBoard";
@@ -16,6 +17,10 @@ import {
 import { JobsProvider, useJobsDispatch, useJobsState } from "./jobs/JobsContext";
 
 export default function App() {
+  useEffect(() => {
+    void wakePostgres();
+  }, []);
+
   return (
     <JobsProvider>
       <Dashboard />

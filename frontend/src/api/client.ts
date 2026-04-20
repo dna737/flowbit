@@ -3,6 +3,18 @@ import { getUserId } from "../identity/userId";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+/** Best-effort ping so Postgres (e.g. Neon) wakes before heavier API calls. */
+export async function wakePostgres(): Promise<void> {
+  try {
+    const response = await fetch(`${apiBaseUrl}/readyz`);
+    if (!response.ok) {
+      console.warn("readiness ping failed", response.status);
+    }
+  } catch (err) {
+    console.warn("readiness ping failed", err);
+  }
+}
+
 function withUserHeaders(headers?: HeadersInit): HeadersInit {
   return {
     ...headers,

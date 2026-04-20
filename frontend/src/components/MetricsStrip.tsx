@@ -64,7 +64,7 @@ export function MetricsStrip({
         accent="failure"
       />
       </Box>
-      <Stack alignItems="flex-end" justifyContent="flex-start" sx={{ pt: 0.5 }}>
+      <Stack alignItems="flex-end" justifyContent="center">
         <ConnectionBadge status={connectionStatus} />
       </Stack>
     </Box>

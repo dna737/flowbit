@@ -81,6 +81,40 @@ func TestHandleHealthz(t *testing.T) {
 	}
 }
 
+func TestHandleReadyz_nilPing(t *testing.T) {
+	s := &Server{}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	s.HandleReadyz(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleReadyz_success(t *testing.T) {
+	s := &Server{
+		PostgresPing: func(context.Context) error { return nil },
+	}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	s.HandleReadyz(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("want 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleReadyz_pingError(t *testing.T) {
+	s := &Server{
+		PostgresPing: func(context.Context) error { return errors.New("boom") },
+	}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	s.HandleReadyz(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandleCreateJob_missingUserID(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
 	rr := httptest.NewRecorder()

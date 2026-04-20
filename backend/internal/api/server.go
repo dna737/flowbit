@@ -57,6 +57,9 @@ type Server struct {
 	Hub            Hub
 	Lister         realtime.JobLister
 	AllowedOrigins []string
+	// PostgresPing checks database connectivity (e.g. pgxpool.Ping). Used by GET /readyz
+	// to wake idle serverless computes. If nil, /readyz returns 503.
+	PostgresPing func(context.Context) error
 }
 
 type createJobRequest struct {
@@ -67,6 +70,7 @@ type createJobRequest struct {
 // Mount registers routes on mux (Go 1.22+ patterns).
 func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", s.HandleHealthz)
+	mux.HandleFunc("GET /readyz", s.HandleReadyz)
 	mux.HandleFunc("POST /jobs", s.HandleCreateJob)
 	mux.HandleFunc("GET /jobs/{id}", s.HandleGetJob)
 	mux.HandleFunc("POST /dispatch", s.HandleDispatch)
@@ -84,6 +88,20 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) HandleReadyz(w http.ResponseWriter, r *http.Request) {
+	if s.PostgresPing == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "postgres ping not configured"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := s.PostgresPing(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "postgres unavailable"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

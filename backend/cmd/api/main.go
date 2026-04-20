@@ -78,6 +78,7 @@ func main() {
 		Hub:            hub,
 		Lister:         jobsRepo,
 		AllowedOrigins: cfg.AllowedOrigins,
+		PostgresPing:   pool.Ping,
 	}
 
 	server := &http.Server{
