@@ -1,0 +1,59 @@
+frontend/src/api/client.ts
+  034a30e20672f7c5 6-17
+frontend/src/App.tsx
+  034a30e20672f7c5 4,20-23
+backend/cmd/api/main.go
+  034a30e20672f7c5 81
+backend/internal/api/server.go
+  034a30e20672f7c5 60-62,73,94-107
+backend/internal/api/server_test.go
+  034a30e20672f7c5 84-117
+backend/internal/repo/users_test.go
+  4218823c45b881b6 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "6c60af6f5d7ff13b4837fbec05764f603002a772",
+  "prompts": {
+    "034a30e20672f7c5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8c6a2688-a7dd-4af1-bf88-cc2e9e864712",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    },
+    "4218823c45b881b6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bccfc6fa-ed00-4f93-a49c-35050ba9ad2f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 52,
+      "total_deletions": 0,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    },
+    "7f2d5a1831c2d3aa": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2d65373b-1447-4650-b1d6-5e85d408f015",
+        "model": "composer-2"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 5,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
