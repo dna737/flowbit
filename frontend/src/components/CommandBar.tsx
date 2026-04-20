@@ -339,8 +339,6 @@ export function CommandBar({
                   fontFamily: tokens.font.sans,
                   fontSize: 12,
                   fontWeight: 500,
-                  "&:hover .category-dismiss": { opacity: 1 },
-                  "&:focus-within .category-dismiss": { opacity: 1 },
                 }}
               >
                 <Typography
@@ -357,13 +355,10 @@ export function CommandBar({
                   {cat}
                 </Typography>
                 <IconButton
-                  className="category-dismiss"
                   size="small"
                   aria-label={`Remove ${cat}`}
                   onClick={() => setCategories((prev) => prev.filter((c) => c !== cat))}
                   sx={{
-                    opacity: 0,
-                    transition: "opacity 0.12s ease",
                     p: 0.25,
                     ml: 0.25,
                     color: pillText,

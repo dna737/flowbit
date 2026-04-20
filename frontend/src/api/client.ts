@@ -59,6 +59,7 @@ export async function getDispatchCategories(): Promise<string[]> {
 }
 
 export async function putDispatchCategories(categories: string[]): Promise<string[]> {
+  console.log("put", categories);
   const response = await fetch(`${apiBaseUrl}/settings/dispatch-categories`, {
     method: "PUT",
     headers: withUserHeaders({
