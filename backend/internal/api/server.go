@@ -219,24 +219,32 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func (s *Server) withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Always set Vary: Origin to prevent CDN caching issues
+		w.Header().Set("Vary", "Origin")
+
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
-		// Cross-origin requests carry an Origin header. If it's set and not in our
-		// allowlist, refuse the request outright instead of relying on the browser
-		// to enforce CORS — this also blocks non-browser clients spoofing an Origin.
-		if origin != "" {
-			if !slices.Contains(s.AllowedOrigins, origin) {
-				w.Header().Set("Vary", "Origin")
-				writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin not allowed"})
-				return
-			}
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-Id")
+
+		// If there is no origin, it's a same-origin or non-browser request.
+		if origin == "" {
+			next.ServeHTTP(w, r)
+			return
 		}
 
+		// 2. Validate Origin
+		if !slices.Contains(s.AllowedOrigins, origin) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin not allowed"})
+			return
+		}
+
+		// 3. Set CORS Headers
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-Id, Authorization") // Added Authorization just in case
+		w.Header().Set("Access-Control-Allow-Credentials", "true") // Required if you use cookies/sessions later
+
+		// 4. Handle Preflight correctly
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
+			w.WriteHeader(http.StatusNoContent) // 204 is perfect for OPTIONS
 			return
 		}
 
