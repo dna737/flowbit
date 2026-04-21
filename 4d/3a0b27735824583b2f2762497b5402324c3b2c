@@ -1,0 +1,23 @@
+backend/go.mod
+  5081a2815b698dca 89-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "4d3a0b27735824583b2f2762497b5402324c3b2c",
+  "prompts": {
+    "5081a2815b698dca": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "90eceb61-6517-4a51-ad47-c3cc9301bf4d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
