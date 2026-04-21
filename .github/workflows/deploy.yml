@@ -1,0 +1,54 @@
+name: Deploy Flowbit Fullstack
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Required for Workload Identity Federation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. Authenticate to Google Cloud without keys
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+
+      # 2. Google Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # 3. BACKEND: Build & Deploy Go to Cloud Run
+      - name: Deploy Backend
+        run: |
+          # Build the Docker image in the cloud
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend ./backend
+          
+          # Deploy to Cloud Run
+          gcloud run deploy flowbit-backend \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend \
+            --region ${{ secrets.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated
+
+      # 4. FRONTEND: Build & Deploy to Firebase Hosting
+      - name: Deploy Frontend
+        run: |
+          # Move into frontend, install dependencies, and build
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+          
+          # Deploy to Firebase using the authenticated session
+          npx firebase-tools deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }}
