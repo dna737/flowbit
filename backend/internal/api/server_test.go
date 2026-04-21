@@ -116,9 +116,9 @@ func TestHandleReadyz_pingError(t *testing.T) {
 }
 
 func TestHandleCreateJob_missingUserID(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"echo"}`))
+	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -126,7 +126,7 @@ func TestHandleCreateJob_missingUserID(t *testing.T) {
 }
 
 func TestHandleCreateJob_invalidJSON(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
 	s.HandleCreateJob(rr, req)
@@ -136,7 +136,7 @@ func TestHandleCreateJob_invalidJSON(t *testing.T) {
 }
 
 func TestHandleCreateJob_missingJobType(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	body := `{"parameters":{}}`
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
@@ -146,8 +146,10 @@ func TestHandleCreateJob_missingJobType(t *testing.T) {
 	}
 }
 
+// Any label not in the user's list must be rejected — the user's
+// dispatch_categories is the single source of truth.
 func TestHandleCreateJob_disallowedJobType(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, JobTypes: &fakeJobTypes{}}
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
 	s.HandleCreateJob(rr, req)
@@ -160,7 +162,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	job := models.Job{
 		ID:         "550e8400-e29b-41d4-a716-446655440000",
-		JobType:    "echo",
+		JobType:    "general",
 		Parameters: map[string]any{"k": "v"},
 		Status:     models.JobStatusPending,
 		Attempts:   0,
@@ -174,7 +176,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 				if userID != "test-user" {
 					t.Fatalf("unexpected userID %q", userID)
 				}
-				if jobType != "echo" || status != models.JobStatusPending {
+				if jobType != "general" || status != models.JobStatusPending {
 					t.Fatalf("unexpected create args")
 				}
 				return job, nil
@@ -186,22 +188,22 @@ func TestHandleCreateJob_success(t *testing.T) {
 				return nil
 			},
 		},
-		JobTypes: &fakeJobTypes{},
+		Categories: &fakeCategoryStore{},
 	}
-	body := `{"job_type":"echo","parameters":{"k":"v"}}`
+	body := `{"job_type":"general","parameters":{"k":"v"}}`
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
 	}
-	if published.JobID != job.ID || published.JobType != "echo" {
+	if published.JobID != job.ID || published.JobType != "general" {
 		t.Fatalf("unexpected publish: %+v", published)
 	}
 }
 
 func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
-	job := models.Job{ID: "550e8400-e29b-41d4-a716-446655440000", JobType: "echo", Parameters: map[string]any{}, Status: models.JobStatusPending}
+	job := models.Job{ID: "550e8400-e29b-41d4-a716-446655440000", JobType: "general", Parameters: map[string]any{}, Status: models.JobStatusPending}
 	var updatedID, updatedStatus string
 	s := &Server{
 		Store: &fakeStore{
@@ -221,10 +223,10 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 				return errors.New("broker down")
 			},
 		},
-		JobTypes: &fakeJobTypes{},
+		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"echo"}`)))
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("want 500 got %d", rr.Code)
@@ -266,7 +268,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	want := models.Job{
 		ID:        "550e8400-e29b-41d4-a716-446655440002",
-		JobType:   "echo",
+		JobType:   "general",
 		Status:    models.JobStatusSucceeded,
 		Attempts:  1,
 		CreatedAt: now,

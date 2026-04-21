@@ -15,7 +15,9 @@ type DispatchResult struct {
 }
 
 // Dispatcher parses a plain-English prompt into a structured job payload.
-// jobTypes is the canonical allowlist for job_type (from DB); categories constrains parameters["category"] when non-empty.
+// jobTypes is the user's single list of allowed job_type labels — the AI must
+// pick exactly one. Callers are expected to load this list from the user's
+// Settings (users.dispatch_categories) before calling Dispatch.
 type Dispatcher interface {
-	Dispatch(ctx context.Context, prompt string, categories []string, jobTypes []string) (DispatchResult, error)
+	Dispatch(ctx context.Context, prompt string, jobTypes []string) (DispatchResult, error)
 }

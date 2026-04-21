@@ -280,11 +280,11 @@ export function CommandBar({
             htmlFor="category-input"
             sx={{ display: "block", mb: 0.5, fontSize: 13, fontWeight: 500, color: tokens.color.textPrimary }}
           >
-            Categories
+            Job labels
           </Typography>
           <FormHelperText sx={{ m: 0, mb: 1.5, fontSize: 12, color: tokens.color.textMuted }}>
-            These labels are what dispatched jobs will be categorized into for routing and display. Maximum{" "}
-            {MAX_DISPATCH_CATEGORIES} categories.
+            The AI dispatcher picks one of these labels as the job_type for each prompt you send. Keep them short and
+            descriptive. Maximum {MAX_DISPATCH_CATEGORIES} labels.
           </FormHelperText>
           {settingsLoadError ? (
             <Alert severity="error" sx={{ mb: 2 }}>

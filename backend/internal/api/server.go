@@ -32,13 +32,11 @@ type JobPublisher interface {
 
 // AIDispatcher translates a plain-English prompt into a structured job payload.
 // If nil, POST /dispatch returns 501 Not Implemented.
+//
+// jobTypes is the user's single list of allowed job_type labels (sourced from
+// the user's dispatch_categories Settings list) — the AI must pick exactly one.
 type AIDispatcher interface {
-	Dispatch(ctx context.Context, prompt string, categories []string, jobTypes []string) (dispatcher.DispatchResult, error)
-}
-
-// AllowedJobTypesSource returns the canonical job_type strings allowed for AI dispatch (from dispatcher_config).
-type AllowedJobTypesSource interface {
-	GetAllowedJobTypes(ctx context.Context) ([]string, error)
+	Dispatch(ctx context.Context, prompt string, jobTypes []string) (dispatcher.DispatchResult, error)
 }
 
 type Hub interface {
@@ -53,7 +51,6 @@ type Server struct {
 	Publisher      JobPublisher
 	AIDispatcher   AIDispatcher
 	Categories     CategoryStore
-	JobTypes       AllowedJobTypesSource
 	Hub            Hub
 	Lister         realtime.JobLister
 	AllowedOrigins []string
@@ -134,13 +131,14 @@ func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	// Validate job_type against the same dispatcher_config allowlist used by /dispatch
-	// so direct POST /jobs callers cannot push arbitrary types into the queue/DLQ.
-	if s.JobTypes == nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "job types not configured"})
+	// Validate job_type against the user's own dispatch_categories list — the
+	// single source of truth for what labels this user's jobs may carry. This
+	// keeps direct POST /jobs callers and AI-dispatched jobs on the same rail.
+	if s.Categories == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "category store not configured"})
 		return
 	}
-	allowed, err := s.JobTypes.GetAllowedJobTypes(ctx)
+	allowed, err := s.Categories.GetCategories(ctx, userID)
 	if err != nil || len(allowed) == 0 {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load allowed job types"})
 		return

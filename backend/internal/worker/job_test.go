@@ -69,22 +69,29 @@ func (p *spyPublisher) PublishJob(_ context.Context, msg queue.JobMessage) error
 
 // --- success path ---
 
-func TestHandleJob_echo_succeeds(t *testing.T) {
-	var st spyStore
-	pub := newSpy()
-	id := "550e8400-e29b-41d4-a716-446655440010"
-	HandleJob(context.Background(), &st, pub, queue.JobMessage{JobID: id, JobType: "echo", Parameters: map[string]any{}}, nil)
-	if len(st.updates) != 2 {
-		t.Fatalf("updates: %+v", st.updates)
-	}
-	if st.updates[0][1] != models.JobStatusRunning || st.updates[1][1] != models.JobStatusSucceeded {
-		t.Fatalf("want running then succeeded: %+v", st.updates)
-	}
-	if st.dlqWrites != 0 {
-		t.Fatalf("dlq writes: %d", st.dlqWrites)
-	}
-	if len(pub.published) != 0 {
-		t.Fatalf("no re-publishes expected: %+v", pub.published)
+// Any label except FailureJobType succeeds and is logged generically — the
+// user's dispatch_categories list is the single source of truth for labels,
+// so the worker must not care what the string is.
+func TestHandleJob_genericLabel_succeeds(t *testing.T) {
+	for _, label := range []string{"general", "email", "pastime", "food"} {
+		t.Run(label, func(t *testing.T) {
+			var st spyStore
+			pub := newSpy()
+			id := "550e8400-e29b-41d4-a716-446655440010"
+			HandleJob(context.Background(), &st, pub, queue.JobMessage{JobID: id, JobType: label, Parameters: map[string]any{}}, nil)
+			if len(st.updates) != 2 {
+				t.Fatalf("updates: %+v", st.updates)
+			}
+			if st.updates[0][1] != models.JobStatusRunning || st.updates[1][1] != models.JobStatusSucceeded {
+				t.Fatalf("want running then succeeded: %+v", st.updates)
+			}
+			if st.dlqWrites != 0 {
+				t.Fatalf("dlq writes: %d", st.dlqWrites)
+			}
+			if len(pub.published) != 0 {
+				t.Fatalf("no re-publishes expected: %+v", pub.published)
+			}
+		})
 	}
 }
 
@@ -158,20 +165,6 @@ func TestHandleJob_fail_finalAttempt_DLQ(t *testing.T) {
 	}
 }
 
-func TestHandleJob_unsupported_finalAttempt_DLQ(t *testing.T) {
-	var st spyStore
-	pub := newSpy()
-	id := "550e8400-e29b-41d4-a716-446655440011"
-	HandleJob(context.Background(), &st, pub,
-		queue.JobMessage{JobID: id, JobType: "unknown", Parameters: map[string]any{"x": 1}, Attempt: maxAttempts - 1}, nil)
-	if len(st.updates) != 2 || st.updates[1][1] != models.JobStatusFailed {
-		t.Fatalf("updates: %+v", st.updates)
-	}
-	if st.dlqWrites != 1 {
-		t.Fatalf("want 1 dlq, got %d", st.dlqWrites)
-	}
-}
-
 // --- error path: mark-running fails ---
 
 func TestHandleJob_runningFails_shortCircuits(t *testing.T) {
@@ -179,7 +172,7 @@ func TestHandleJob_runningFails_shortCircuits(t *testing.T) {
 	st.failRun = true
 	pub := newSpy()
 	HandleJob(context.Background(), &st, pub,
-		queue.JobMessage{JobID: "550e8400-e29b-41d4-a716-446655440012", JobType: "echo"}, nil)
+		queue.JobMessage{JobID: "550e8400-e29b-41d4-a716-446655440012", JobType: "general"}, nil)
 	if len(st.updates) != 1 || st.updates[0][1] != models.JobStatusRunning {
 		t.Fatalf("updates: %+v", st.updates)
 	}

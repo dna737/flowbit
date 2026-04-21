@@ -104,33 +104,23 @@ func HandleJob(ctx context.Context, store Store, pub Publisher, msg queue.JobMes
 	}
 }
 
-// execute runs the job type's business logic. Returns non-nil on failure.
-// The "fail" type always fails and is used to drive the retry/DLQ path in tests and demos.
+// FailureJobType is the reserved job_type label that always errors, used to
+// drive the retry/DLQ path in tests and demos. It is the only label with
+// behavior special-cased in the worker; every other label is treated uniformly.
+const FailureJobType = "fail"
+
+// execute runs the job's business logic. Returns non-nil on failure.
+//
+// Job labels come from the user's dispatch_categories list (the single source
+// of truth), so the worker accepts any label and simply logs it. The one
+// exception is FailureJobType ("fail"), which always errors so the DLQ path
+// stays demonstrable regardless of what else the user configures.
 func execute(msg queue.JobMessage, logf Logf) error {
-	switch msg.JobType {
-	case "echo":
-		if logf != nil {
-			logf("processed echo job %s params=%v", msg.JobID, msg.Parameters)
-		}
-		return nil
-	case "email":
-		if logf != nil {
-			logf("processed email job %s to=%v subject=%v", msg.JobID, msg.Parameters["to"], msg.Parameters["subject"])
-		}
-		return nil
-	case "image_resize":
-		if logf != nil {
-			logf("processed image_resize job %s width=%v height=%v", msg.JobID, msg.Parameters["width"], msg.Parameters["height"])
-		}
-		return nil
-	case "url_scrape":
-		if logf != nil {
-			logf("processed url_scrape job %s url=%v", msg.JobID, msg.Parameters["url"])
-		}
-		return nil
-	case "fail":
+	if msg.JobType == FailureJobType {
 		return fmt.Errorf("deliberate failure (job %s attempt %d)", msg.JobID, msg.Attempt)
-	default:
-		return fmt.Errorf("unsupported job_type: %s", msg.JobType)
 	}
+	if logf != nil {
+		logf("processed %s job %s params=%v", msg.JobType, msg.JobID, msg.Parameters)
+	}
+	return nil
 }

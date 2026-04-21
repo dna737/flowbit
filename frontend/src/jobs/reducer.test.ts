@@ -5,7 +5,7 @@ import { FLOWBIT_PROMPT_PARAM, type Job } from "./types";
 
 const baseJob: Job = {
   id: "550e8400-e29b-41d4-a716-446655440000",
-  job_type: "echo",
+  job_type: "general",
   parameters: { message: "hello" },
   status: "pending",
   attempts: 0,

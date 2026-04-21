@@ -52,12 +52,13 @@ cd backend
 go run ./cmd/worker
 ```
 
-Create a dummy job (`echo`) from a third terminal:
+Create a dummy job (`general` is the seeded default label for a new user) from a third terminal. The `X-User-Id` header picks your row in `users`; the `job_type` must match one of the labels stored in your `dispatch_categories` (edit them from the Settings dialog in the UI, or via `PUT /settings/dispatch-categories`):
 
 ```powershell
 curl -X POST http://localhost:8080/jobs `
   -H "Content-Type: application/json" `
-  -d "{\"job_type\":\"echo\",\"parameters\":{\"message\":\"hello flowbit\"}}"
+  -H "X-User-Id: demo" `
+  -d "{\"job_type\":\"general\",\"parameters\":{\"message\":\"hello flowbit\"}}"
 ```
 
 Then fetch status:
@@ -125,12 +126,12 @@ $env:INTEGRATION=1
 go test -tags=integration -v ./integration/...
 ```
 
-**Optional managed stack test (Neon + Kafka + worker, no HTTP):** Uses the same `.env` as smoke. Creates an `echo` job row, publishes to Kafka, consumes with a one-off group at `LastOffset`, runs `worker.HandleJob`, asserts `succeeded`.
+**Optional managed stack test (Neon + Kafka + worker, no HTTP):** Uses the same `.env` as smoke. Creates a `general` job row, publishes to Kafka, consumes with a one-off group at `LastOffset`, runs `worker.HandleJob`, asserts `succeeded`.
 
 ```powershell
 cd backend
 $env:E2E_STACK = "1"
-go test -tags=e2e -count=1 ./integration -run TestStack_echoJob_endToEnd -v
+go test -tags=e2e -count=1 ./integration -run TestStack_genericJob_endToEnd -v
 ```
 
 Skip when `E2E_STACK` is unset so `go test ./...` stays credential-free.

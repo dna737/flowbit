@@ -40,8 +40,7 @@ func main() {
 	}
 
 	jobsRepo := repo.NewJobsRepo(pool)
-	dispatcherConfigRepo := repo.NewDispatcherConfigRepo(pool)
-	usersRepo := repo.NewUsersRepo(pool, dispatcherConfigRepo)
+	usersRepo := repo.NewUsersRepo(pool)
 	hub := realtime.NewHub()
 	go hub.Run(ctx)
 	go realtime.Listen(ctx, cfg.DatabaseURL, hub, jobsRepo)
@@ -74,7 +73,6 @@ func main() {
 		Publisher:      kafkaJobPublisher{writer: writer},
 		AIDispatcher:   aiDispatcher,
 		Categories:     usersRepo,
-		JobTypes:       dispatcherConfigRepo,
 		Hub:            hub,
 		Lister:         jobsRepo,
 		AllowedOrigins: cfg.AllowedOrigins,

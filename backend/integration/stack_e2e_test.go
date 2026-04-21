@@ -30,11 +30,11 @@ func (p workerPublisher) PublishJob(ctx context.Context, msg queue.JobMessage) e
 	return kafka.PublishJob(ctx, p.writer, msg)
 }
 
-// TestStack_echoJob_endToEnd exercises Neon + Aiven Kafka + worker.HandleJob in one process (no HTTP).
+// TestStack_genericJob_endToEnd exercises Neon + Aiven Kafka + worker.HandleJob in one process (no HTTP).
 // Requires DATABASE_URL, KAFKA_BROKERS, topic, and TLS cert paths in .env (same as cmd/smoke).
-func TestStack_echoJob_endToEnd(t *testing.T) {
+func TestStack_genericJob_endToEnd(t *testing.T) {
 	if os.Getenv("E2E_STACK") != "1" {
-		t.Skip(`set E2E_STACK=1 and .env with DATABASE_URL + Aiven KAFKA_*; run: go test -tags=e2e -count=1 ./integration -run TestStack_echoJob_endToEnd`)
+		t.Skip(`set E2E_STACK=1 and .env with DATABASE_URL + Aiven KAFKA_*; run: go test -tags=e2e -count=1 ./integration -run TestStack_genericJob_endToEnd`)
 	}
 
 	config.LoadDotenv()
@@ -59,7 +59,7 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 	}
 
 	store := repo.NewJobsRepo(pool)
-	job, err := store.CreateJob(ctx, "e2e-user", "echo", map[string]any{"e2e": true}, models.JobStatusPending)
+	job, err := store.CreateJob(ctx, "e2e-user", "general", map[string]any{"e2e": true}, models.JobStatusPending)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestStack_echoJob_endToEnd(t *testing.T) {
 	}
 
 	// Pass writer as publisher so HandleJob can re-publish on failure.
-	// The echo job succeeds, so the publisher is not exercised here.
+	// The generic job succeeds, so the publisher is not exercised here.
 	pub := workerPublisher{writer: writer}
 	worker.HandleJob(ctx, store, pub, got, t.Logf)
 

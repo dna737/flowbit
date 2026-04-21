@@ -17,6 +17,10 @@ type dispatchRequest struct {
 
 // HandleDispatch accepts a plain-English prompt, calls the AI dispatcher to
 // extract a job_type + parameters, then enqueues the job via the normal path.
+//
+// The user's dispatch_categories list is the single source of truth for the
+// allowed job_type labels passed to Gemini — the same list the Settings
+// dialog edits.
 func (s *Server) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	if s.AIDispatcher == nil {
 		writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "ai dispatcher not configured"})
@@ -42,29 +46,22 @@ func (s *Server) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
-	categories := []string(nil)
-	if s.Categories != nil {
-		raw, err := s.Categories.GetCategories(ctx, userID)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load categories"})
-			return
-		}
-		categories = normalizeCategoryList(raw)
-	} else {
-		_ = userID // header validated; no category store wired
-	}
-
-	if s.JobTypes == nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "job types not configured"})
+	if s.Categories == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "category store not configured"})
 		return
 	}
-	jobTypes, err := s.JobTypes.GetAllowedJobTypes(ctx)
-	if err != nil || len(jobTypes) == 0 {
+	rawJobTypes, err := s.Categories.GetCategories(ctx, userID)
+	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load allowed job types"})
 		return
 	}
+	jobTypes := normalizeCategoryList(rawJobTypes)
+	if len(jobTypes) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no job type labels configured — open Settings to add at least one"})
+		return
+	}
 
-	result, err := s.AIDispatcher.Dispatch(ctx, req.Prompt, categories, jobTypes)
+	result, err := s.AIDispatcher.Dispatch(ctx, req.Prompt, jobTypes)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "ai dispatch failed: " + err.Error()})
 		return

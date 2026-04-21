@@ -18,20 +18,21 @@ type fakeDispatcher struct {
 	err    error
 }
 
-func (f *fakeDispatcher) Dispatch(_ context.Context, _ string, _ []string, _ []string) (dispatcher.DispatchResult, error) {
+func (f *fakeDispatcher) Dispatch(_ context.Context, _ string, _ []string) (dispatcher.DispatchResult, error) {
 	return f.result, f.err
 }
 
-type fakeJobTypes struct{}
-
-func (*fakeJobTypes) GetAllowedJobTypes(context.Context) ([]string, error) {
-	return []string{"echo", "email", "image_resize", "url_scrape", "fail"}, nil
+// fakeCategoryStore returns a fixed list of allowed job_type labels so tests
+// can exercise both /jobs and /dispatch without a real DB.
+type fakeCategoryStore struct {
+	list []string
 }
 
-type fakeCategoryStore struct{}
-
 func (f *fakeCategoryStore) GetCategories(_ context.Context, _ string) ([]string, error) {
-	return []string{}, nil
+	if f.list == nil {
+		return []string{"general", "email", "image_resize", "url_scrape", "fail"}, nil
+	}
+	return f.list, nil
 }
 
 func (f *fakeCategoryStore) SetCategories(_ context.Context, _ string, _ []string) error {
@@ -59,7 +60,6 @@ func TestHandleDispatch_emptyPrompt(t *testing.T) {
 		Publisher:    &fakePublisher{},
 		AIDispatcher: &fakeDispatcher{},
 		Categories:   &fakeCategoryStore{},
-		JobTypes:     &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
@@ -77,7 +77,6 @@ func TestHandleDispatch_dispatcherError(t *testing.T) {
 			err: errors.New("api down"),
 		},
 		Categories: &fakeCategoryStore{},
-		JobTypes:   &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
@@ -114,7 +113,6 @@ func TestHandleDispatch_success(t *testing.T) {
 			},
 		},
 		Categories: &fakeCategoryStore{},
-		JobTypes:   &fakeJobTypes{},
 	}
 	rr := httptest.NewRecorder()
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
@@ -131,9 +129,26 @@ func TestHandleDispatch_invalidJSON(t *testing.T) {
 		AIDispatcher: &fakeDispatcher{},
 	}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{`))
+	req := httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"`))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
+	}
+}
+
+// An empty user list means the AI has nothing to choose from; return 400 with
+// a clear message so the UI can prompt the user to open Settings.
+func TestHandleDispatch_emptyJobTypes(t *testing.T) {
+	s := &Server{
+		Store:        &fakeStore{},
+		Publisher:    &fakePublisher{},
+		AIDispatcher: &fakeDispatcher{},
+		Categories:   &fakeCategoryStore{list: []string{}},
+	}
+	rr := httptest.NewRecorder()
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"anything"}`)))
+	s.HandleDispatch(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 got %d: %s", rr.Code, rr.Body.String())
 	}
 }
