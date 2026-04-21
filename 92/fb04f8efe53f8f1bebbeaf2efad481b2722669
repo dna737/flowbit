@@ -1,0 +1,27 @@
+README.md
+  a249c9828fc99e70 140-182
+.dockerignore
+  a249c9828fc99e70 1-11
+Dockerfile
+  a249c9828fc99e70 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "92fb04f8efe53f8f1bebbeaf2efad481b2722669",
+  "prompts": {
+    "a249c9828fc99e70": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a553d913-84ce-474a-8f7e-7b245c2169f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 68,
+      "total_deletions": 0,
+      "accepted_lines": 207,
+      "overriden_lines": 0
+    }
+  }
+}
