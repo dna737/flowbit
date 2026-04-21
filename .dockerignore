@@ -1,0 +1,11 @@
+.git
+.github
+frontend
+**/*.md
+**/*.test.go
+**/testdata/**
+.env
+.env.*
+*.cert
+*.key
+*.pem
