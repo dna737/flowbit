@@ -1,0 +1,57 @@
+backend/internal/worker/job.go
+  0557efbd1a3debee 107-117,119,122-125
+backend/internal/worker/job_test.go
+  0557efbd1a3debee 72-94,175
+backend/internal/api/server.go
+  0557efbd1a3debee 35-37,39,134-138,141
+backend/internal/dispatcher/gemini.go
+  0557efbd1a3debee 94,99,101-102,118-130,132-135,137-163,166,170-171,175,183-186,188
+backend/internal/repo/users_test.go
+  0557efbd1a3debee 11,28,34
+frontend/src/jobs/reducer.test.ts
+  0557efbd1a3debee 8
+backend/integration/stack_e2e_test.go
+  0557efbd1a3debee 33,35,37,62,124
+README.md
+  0557efbd1a3debee 55,60-61,129,134
+backend/internal/repo/users.go
+  0557efbd1a3debee 11-15,18,21-22,25-27,38
+frontend/src/components/CommandBar.tsx
+  0557efbd1a3debee 283,286-287
+backend/internal/dispatcher/gemini_test.go
+  0557efbd1a3debee 18,24,40,53,62-75,78,86,94,102,110,116-120,122,124-126,128-132,136,138,140-151,155-169
+backend/internal/db/db.go
+  0557efbd1a3debee 11,27
+backend/internal/api/dispatch_test.go
+  0557efbd1a3debee 21,25-28,32-35,132,138-152
+backend/internal/db/sql/users.sql
+  0557efbd1a3debee 2-4,7
+backend/internal/dispatcher/dispatcher.go
+  0557efbd1a3debee 18-20,22
+backend/internal/api/server_test.go
+  0557efbd1a3debee 119,121,129,139,149-150,152,165,179,191,193,200,206,226,229,271
+backend/internal/api/dispatch.go
+  0557efbd1a3debee 20-23,49-50,53-54,58-62,64
+backend/cmd/api/main.go
+  0557efbd1a3debee 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "f56e8165efd6379a627af0fcec009da52bf3af42",
+  "prompts": {
+    "0557efbd1a3debee": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6d5fd08c-7ddb-4a71-bab2-9f09838365c5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "dna737",
+      "messages": [],
+      "total_additions": 290,
+      "total_deletions": 286,
+      "accepted_lines": 700,
+      "overriden_lines": 0
+    }
+  }
+}
