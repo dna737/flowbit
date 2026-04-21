@@ -86,3 +86,8 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 )
+
+// CVE-2023-44487 (HTTP/2 Rapid Reset DoS) — pin transitive k8s.io/apimachinery
+// (pulled via containerd v1.7.18 -> testcontainers-go) to a patched version.
+// See SNYK-GOLANG-K8SIOAPIMACHINERYPKGUTILRUNTIME-8367153.
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.26.15
