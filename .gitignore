@@ -55,3 +55,9 @@ obj/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+.mcp*
+.claude/settings*
+
+
+.claude/settings.local.json
