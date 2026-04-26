@@ -1,12 +1,15 @@
 import type { Job } from "../jobs/types";
-import { getUserId } from "../identity/userId";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+const withCredentials = {
+  credentials: "include" as const,
+};
 
 /** Best-effort ping so Postgres (e.g. Neon) wakes before heavier API calls. */
 export async function wakePostgres(): Promise<void> {
   try {
-    const response = await fetch(`${apiBaseUrl}/readyz`);
+    const response = await fetch(`${apiBaseUrl}/readyz`, withCredentials);
     if (!response.ok) {
       console.warn("readiness ping failed", response.status);
     }
@@ -15,23 +18,17 @@ export async function wakePostgres(): Promise<void> {
   }
 }
 
-function withUserHeaders(headers?: HeadersInit): HeadersInit {
-  return {
-    ...headers,
-    "X-User-Id": getUserId(),
-  };
-}
-
 interface DispatchResponse {
   error?: string;
 }
 
 export async function postDispatch(prompt: string): Promise<Job> {
   const response = await fetch(`${apiBaseUrl}/dispatch`, {
+    ...withCredentials,
     method: "POST",
-    headers: withUserHeaders({
+    headers: {
       "Content-Type": "application/json",
-    }),
+    },
     body: JSON.stringify({ prompt }),
   });
 
@@ -45,7 +42,7 @@ interface CategoriesBody {
 
 export async function getDispatchCategories(): Promise<string[]> {
   const response = await fetch(`${apiBaseUrl}/settings/dispatch-categories`, {
-    headers: withUserHeaders(),
+    ...withCredentials,
   });
   const body = (await response.json()) as CategoriesBody;
   if (!response.ok) {
@@ -61,10 +58,11 @@ export async function getDispatchCategories(): Promise<string[]> {
 export async function putDispatchCategories(categories: string[]): Promise<string[]> {
   console.log("put", categories);
   const response = await fetch(`${apiBaseUrl}/settings/dispatch-categories`, {
+    ...withCredentials,
     method: "PUT",
-    headers: withUserHeaders({
+    headers: {
       "Content-Type": "application/json",
-    }),
+    },
     body: JSON.stringify({ categories }),
   });
   const body = (await response.json()) as CategoriesBody;
@@ -83,10 +81,11 @@ export async function postJob(
   params: Record<string, unknown>,
 ): Promise<Job> {
   const response = await fetch(`${apiBaseUrl}/jobs`, {
+    ...withCredentials,
     method: "POST",
-    headers: withUserHeaders({
+    headers: {
       "Content-Type": "application/json",
-    }),
+    },
     body: JSON.stringify({ job_type: type, parameters: params }),
   });
 

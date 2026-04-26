@@ -15,6 +15,7 @@ import (
 	"flowbit/backend/internal/queue"
 	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
+	"flowbit/backend/internal/session"
 )
 
 // JobStore is the persistence surface needed by the HTTP API.
@@ -54,6 +55,7 @@ type Server struct {
 	Hub            Hub
 	Lister         realtime.JobLister
 	AllowedOrigins []string
+	Sessions       *session.Manager
 	// PostgresPing checks database connectivity (e.g. pgxpool.Ping). Used by GET /readyz
 	// to wake idle serverless computes. If nil, /readyz returns 503.
 	PostgresPing func(context.Context) error
@@ -81,7 +83,7 @@ func (s *Server) Mount(mux *http.ServeMux) {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	s.Mount(mux)
-	return s.withCORS(mux)
+	return s.withCORS(s.withSession(mux))
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -103,7 +105,7 @@ func (s *Server) HandleReadyz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
-	userID, ok := RequireUserID(w, r)
+	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return
 	}
@@ -172,7 +174,7 @@ func (s *Server) HandleCreateJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleGetJob(w http.ResponseWriter, r *http.Request) {
-	userID, ok := RequireUserID(w, r)
+	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return
 	}
@@ -239,7 +241,7 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		// 3. Set CORS Headers
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-Id, Authorization") // Added Authorization just in case
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true") // Required if you use cookies/sessions later
 
 		// 4. Handle Preflight correctly

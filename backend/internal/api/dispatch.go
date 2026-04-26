@@ -38,7 +38,7 @@ func (s *Server) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := RequireUserID(w, r)
+	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return
 	}

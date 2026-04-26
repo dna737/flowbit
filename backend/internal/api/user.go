@@ -2,15 +2,34 @@ package api
 
 import (
 	"net/http"
-	"strings"
+
+	"flowbit/backend/internal/session"
 )
 
-// RequireUserID returns the X-User-Id value or writes 400 and false if missing/blank.
-func RequireUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	u := strings.TrimSpace(r.Header.Get("X-User-Id"))
-	if u == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "X-User-Id header is required"})
-		return "", false
+var defaultSessions = session.NewManager()
+
+func (s *Server) withSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		userID := s.sessionManager().Ensure(w, r)
+		next.ServeHTTP(w, r.WithContext(session.ContextWithUserID(r.Context(), userID)))
+	})
+}
+
+func (s *Server) requireUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	if userID, ok := session.UserIDFromContext(r.Context()); ok {
+		return userID, true
 	}
-	return u, true
+	return s.sessionManager().Ensure(w, r), true
+}
+
+func (s *Server) sessionManager() *session.Manager {
+	if s != nil && s.Sessions != nil {
+		return s.Sessions
+	}
+	return defaultSessions
 }

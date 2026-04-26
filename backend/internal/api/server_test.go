@@ -67,9 +67,9 @@ func (f *fakeLister) ListJobsByUser(ctx context.Context, userID string, limit in
 
 type fakeHub struct{}
 
-func (fakeHub) Register(*realtime.Client)        {}
-func (fakeHub) Unregister(*realtime.Client)      {}
-func (fakeHub) BroadcastToUser(string, []byte)   {}
+func (fakeHub) Register(*realtime.Client)      {}
+func (fakeHub) Unregister(*realtime.Client)    {}
+func (fakeHub) BroadcastToUser(string, []byte) {}
 
 func TestHandleHealthz(t *testing.T) {
 	s := &Server{}
@@ -115,20 +115,45 @@ func TestHandleReadyz_pingError(t *testing.T) {
 	}
 }
 
-func TestHandleCreateJob_missingUserID(t *testing.T) {
-	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
+func TestHandleCreateJob_createsSessionWhenMissing(t *testing.T) {
+	job := models.Job{
+		ID:         "550e8400-e29b-41d4-a716-446655440010",
+		JobType:    "general",
+		Parameters: map[string]any{},
+		Status:     models.JobStatusPending,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+	}
+	s := &Server{
+		Store: &fakeStore{
+			createJob: func(_ context.Context, userID, jobType string, _ map[string]any, _ string) (models.Job, error) {
+				if userID == "" {
+					t.Fatal("expected minted session user id")
+				}
+				if jobType != "general" {
+					t.Fatalf("unexpected job type %q", jobType)
+				}
+				return job, nil
+			},
+		},
+		Publisher:  &fakePublisher{},
+		Categories: &fakeCategoryStore{},
+	}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`))
 	s.HandleCreateJob(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("want 201 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if cookies := rr.Result().Cookies(); len(cookies) == 0 {
+		t.Fatal("expected session cookie to be set")
 	}
 }
 
 func TestHandleCreateJob_invalidJSON(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -139,7 +164,7 @@ func TestHandleCreateJob_missingJobType(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	body := `{"parameters":{}}`
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
@@ -151,7 +176,7 @@ func TestHandleCreateJob_missingJobType(t *testing.T) {
 func TestHandleCreateJob_disallowedJobType(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -173,7 +198,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 	s := &Server{
 		Store: &fakeStore{
 			createJob: func(_ context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error) {
-				if userID != "test-user" {
+				if userID != "550e8400-e29b-41d4-a716-446655440099" {
 					t.Fatalf("unexpected userID %q", userID)
 				}
 				if jobType != "general" || status != models.JobStatusPending {
@@ -192,7 +217,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 	}
 	body := `{"job_type":"general","parameters":{"k":"v"}}`
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
@@ -226,24 +251,13 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("want 500 got %d", rr.Code)
 	}
 	if updatedID != job.ID || updatedStatus != models.JobStatusFailed {
 		t.Fatalf("update: id=%s status=%s", updatedID, updatedStatus)
-	}
-}
-
-func TestHandleGetJob_missingUserID(t *testing.T) {
-	s := &Server{Store: &fakeStore{}}
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/jobs/x", nil)
-	req.SetPathValue("id", "550e8400-e29b-41d4-a716-446655440001")
-	s.HandleGetJob(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("want 400 got %d", rr.Code)
 	}
 }
 
@@ -256,7 +270,7 @@ func TestHandleGetJob_notFound(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodGet, "/jobs/x", nil))
+	req := withSession(httptest.NewRequest(http.MethodGet, "/jobs/x", nil))
 	req.SetPathValue("id", "550e8400-e29b-41d4-a716-446655440001")
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -277,7 +291,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 	s := &Server{
 		Store: &fakeStore{
 			getJob: func(_ context.Context, userID, id string) (models.Job, error) {
-				if userID != "test-user" {
+				if userID != "550e8400-e29b-41d4-a716-446655440099" {
 					t.Fatalf("userID %q", userID)
 				}
 				if id != want.ID {
@@ -288,7 +302,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil))
+	req := withSession(httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil))
 	req.SetPathValue("id", want.ID)
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusOK {
@@ -332,6 +346,9 @@ func TestServerHandler_setsCORSHeadersForAllowedOrigin(t *testing.T) {
 
 	if rr.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Fatalf("unexpected allow origin header: %q", rr.Header().Get("Access-Control-Allow-Origin"))
+	}
+	if rr.Header().Values("Set-Cookie") == nil {
+		t.Fatal("expected session cookie on handled request")
 	}
 }
 

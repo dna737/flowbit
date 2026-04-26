@@ -39,8 +39,8 @@ func (f *fakeCategoryStore) SetCategories(_ context.Context, _ string, _ []strin
 	return nil
 }
 
-func withUserID(req *http.Request) *http.Request {
-	req.Header.Set("X-User-Id", "test-user")
+func withSession(req *http.Request) *http.Request {
+	req.AddCookie(&http.Cookie{Name: "flowbit_session", Value: "550e8400-e29b-41d4-a716-446655440099"})
 	return req
 }
 
@@ -62,7 +62,7 @@ func TestHandleDispatch_emptyPrompt(t *testing.T) {
 		Categories:   &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
@@ -79,7 +79,7 @@ func TestHandleDispatch_dispatcherError(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("want 502 got %d", rr.Code)
@@ -115,7 +115,7 @@ func TestHandleDispatch_success(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
@@ -146,7 +146,7 @@ func TestHandleDispatch_emptyJobTypes(t *testing.T) {
 		Categories:   &fakeCategoryStore{list: []string{}},
 	}
 	rr := httptest.NewRecorder()
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"anything"}`)))
+	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"anything"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d: %s", rr.Code, rr.Body.String())

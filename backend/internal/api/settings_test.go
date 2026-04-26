@@ -34,7 +34,7 @@ func TestHandlePutDispatchCategories_tooMany(t *testing.T) {
 	raw, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPut, "/settings/dispatch-categories", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-User-Id", "u1")
+	req.AddCookie(&http.Cookie{Name: "flowbit_session", Value: "550e8400-e29b-41d4-a716-446655440099"})
 	s.HandlePutDispatchCategories(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d: %s", rr.Code, rr.Body.String())

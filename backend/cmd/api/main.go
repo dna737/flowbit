@@ -16,6 +16,7 @@ import (
 	"flowbit/backend/internal/kafka"
 	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
+	"flowbit/backend/internal/session"
 )
 
 func main() {
@@ -76,6 +77,7 @@ func main() {
 		Hub:            hub,
 		Lister:         jobsRepo,
 		AllowedOrigins: cfg.AllowedOrigins,
+		Sessions:       session.NewManager(),
 		PostgresPing:   pool.Ping,
 	}
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"flowbit/backend/internal/models"
+	"flowbit/backend/internal/session"
 
 	"github.com/coder/websocket"
 )
@@ -34,9 +35,8 @@ type snapshotMessage struct {
 	Jobs []models.Job `json:"jobs"`
 }
 
-// Handler returns the GET /ws handler. The user_id query parameter is required
-// (browsers can't set custom headers on WebSocket handshakes); the snapshot and
-// all subsequent broadcasts are scoped to that user.
+// Handler returns the GET /ws handler. The user identity is resolved from the
+// server-issued session cookie already attached to the request context.
 func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.HandlerFunc {
 	originPatterns := allowedOriginPatterns(allowedOrigins)
 
@@ -46,9 +46,9 @@ func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.Hand
 			return
 		}
 
-		userID := strings.TrimSpace(r.URL.Query().Get("user_id"))
-		if userID == "" {
-			http.Error(w, "user_id query parameter is required", http.StatusBadRequest)
+		userID, ok := session.UserIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "session user id is missing", http.StatusUnauthorized)
 			return
 		}
 

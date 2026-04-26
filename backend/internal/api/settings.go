@@ -28,7 +28,7 @@ func (s *Server) HandleGetDispatchCategories(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "category store not configured"})
 		return
 	}
-	userID, ok := RequireUserID(w, r)
+	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return
 	}
@@ -69,7 +69,7 @@ func (s *Server) HandlePutDispatchCategories(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	userID, ok := RequireUserID(w, r)
+	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return
 	}
