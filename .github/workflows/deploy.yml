@@ -3,6 +3,10 @@ on:
   push:
     branches: [ main ]
 
+env:
+  # This forces actions using Node 20 to run on Node 24 instead
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -31,10 +35,8 @@ jobs:
       # 3. BACKEND: Build & Deploy Go to Cloud Run
       - name: Deploy Backend
         run: |
-          # Build the Docker image in the cloud
           gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend ./backend
           
-          # Deploy to Cloud Run
           gcloud run deploy flowbit-backend \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend \
             --region ${{ secrets.GCP_REGION }} \
@@ -44,11 +46,8 @@ jobs:
       # 4. FRONTEND: Build & Deploy to Firebase Hosting
       - name: Deploy Frontend
         run: |
-          # Move into frontend, install dependencies, and build
           cd frontend
           npm ci
           npm run build
           cd ..
-          
-          # Deploy to Firebase using the authenticated session
           npx firebase-tools deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }}
