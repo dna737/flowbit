@@ -36,7 +36,7 @@ jobs:
       - name: Deploy Backend
         run: |
           gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend ./backend
-          
+
           gcloud run deploy flowbit-backend \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend \
             --region ${{ secrets.GCP_REGION }} \
