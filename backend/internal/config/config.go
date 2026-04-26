@@ -31,7 +31,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		APIAddr:        getenv("API_ADDR", ":8080"),
 		DatabaseURL:    getenv("DATABASE_URL", ""),
-		AllowedOrigins: splitCSV(getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000")),
+		AllowedOrigins: splitCSV(getenv("ALLOWED_ORIGINS", "")),
 		KafkaBrokers:   splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs: getenv("KAFKA_TOPIC_JOBS", "jobs"),
 		// Aiven TLS certificate files — empty by default (TLS opt-in).
