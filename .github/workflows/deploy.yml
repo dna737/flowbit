@@ -36,12 +36,15 @@ jobs:
       - name: Deploy Backend
         run: |
           cd backend
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend .
+
+          # Build and push to Artifact Registry instead of GCR
+          # Format: LOCATION-docker.pkg.dev/PROJECT-ID/REPOSITORY/IMAGE
+          gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend .
 
           # Now deploy that image to Cloud Run
           gcloud run deploy flowbit-backend \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend \
-            --region ${{ secrets.GCP_REGION }} \
+            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend \
+            --region us-central1 \
             --platform managed \
             --allow-unauthenticated
 
@@ -52,4 +55,5 @@ jobs:
           npm ci
           npm run build
           cd ..
+          # Use npx to ensure firebase-tools is available
           npx firebase-tools deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }}
