@@ -35,8 +35,11 @@ jobs:
       # 3. BACKEND: Build & Deploy Go to Cloud Run
       - name: Deploy Backend
         run: |
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend ./backend
+          cd backend
+          # We use '.' because we are already inside the backend directory
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend .
 
+          # Now deploy that image to Cloud Run
           gcloud run deploy flowbit-backend \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend \
             --region ${{ secrets.GCP_REGION }} \
