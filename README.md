@@ -1,102 +1,108 @@
 # Flowbit
 
-Backend-first implementation of the Flowbit scheduler using managed services (Neon Postgres + Aiven Kafka).
+A distributed task queue built from scratch in Go (Kafka + Postgres), with a Gemini dispatcher that turns plain English into jobs and a live React pipeline visualizer.
 
-## Prerequisites
+> **Live demo:** _coming soon_
 
-- Go 1.24+
-- Managed service credentials for:
-  - Neon Postgres
-  - Aiven (Kafka - download service.cert, service.key, ca.pem from Aiven Console)
+![Flowbit visualizer](docs/screenshots/flowbit-visualizer.png)
 
-## Environment setup
+## What it does
 
-1. Copy `.env.example` to `.env` at the **repository root** (or in `backend/`; both are loaded).
-2. Fill in `DATABASE_URL` and `KAFKA_*` for API, worker, and smoke checks.
-3. `go run ./cmd/...` from `backend/` automatically loads `../.env` then `./.env` so you do not need to export variables manually.
+- **Plain English in, structured job out.** `POST /dispatch` with `"send an email to bob@example.com about tomorrow's launch"` and Gemini returns a typed job (`job_type`, `parameters`).
+- **Durable queue.** Job state lives in Postgres (Neon); Kafka (Aiven) carries the work. Crash a worker mid-job and the next consumer picks it up.
+- **Retries + dead-letter queue.** Up to 3 attempts with exponential backoff on Kafka read errors; final failures land in `dead_letter_queue` and stay there.
+- **Live pipeline view.** The React UI subscribes over WebSocket and animates each job through `pending → running → retrying → succeeded / failed`, with a metrics strip and a DLQ panel.
+- **Pluggable handlers.** `echo`, `email`, `image_resize` ship as job types; `fail` is built in for chaos testing the retry/DLQ paths.
 
-PowerShell example:
+## Architecture
+
+```mermaid
+flowchart LR
+  user[User] -->|prompt| ui[React UI]
+  ui -->|"POST /dispatch"| api[Go API cmd/api]
+  api -->|parse| gemini[Gemini API]
+  api -->|"INSERT job"| pg[(Postgres / Neon)]
+  api -->|produce| kafka[(Kafka / Aiven)]
+  kafka -->|consume| worker[Go worker cmd/worker]
+  worker -->|"UPDATE status"| pg
+  worker -->|retry / DLQ| pg
+  api -->|"WebSocket /ws"| ui
+```
+
+The API and worker are separate binaries (`backend/cmd/api`, `backend/cmd/worker`). The API is stateless and Cloud Run-friendly; the worker is a steady consumer that should run on a long-lived host. See [docs/10-architecture.md](docs/10-architecture.md) for the layer breakdown.
+
+## AI dispatcher
+
+`POST /dispatch` calls Gemini with the user prompt and asks for structured output. The default model is `gemini-3-flash-preview`; on 5xx/429 the dispatcher walks a fallback chain (`gemini-flash-latest`, `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`) configured in [.env.example](.env.example).
+
+Real Gemini traffic from a demo session, observed in Google AI Studio:
+
+![Gemini API usage](docs/screenshots/gemini-api-usage.png)
+
+Validated output is forwarded to `POST /jobs`, which is the same shape you'd post directly without the AI layer — the scheduler stays runnable and testable without Gemini configured.
+
+## Tech stack
+
+- **Backend:** Go 1.24+, [`segmentio/kafka-go`](https://github.com/segmentio/kafka-go), [`jackc/pgx`](https://github.com/jackc/pgx), `gorilla/websocket`
+- **Data plane:** Postgres (Neon, free tier), Kafka with TLS cert auth (Aiven, free tier)
+- **AI:** Google Gemini via Google AI Studio
+- **Frontend:** React 18 + TypeScript + Vite + MUI
+- **Deploy targets:** Cloud Run (API), Compute Engine `e2-micro` or similar (worker), Vercel/Firebase Hosting (UI)
+
+## Run it locally
+
+You need:
+
+- Go 1.24+, Node 20+
+- A Neon Postgres URL
+- Aiven Kafka brokers + `service.cert` / `service.key` / `ca.pem` in the repo root
+- _(Optional)_ a Gemini API key for `/dispatch`
+
+Set up env once:
 
 ```powershell
 Copy-Item .env.example .env
+# fill in DATABASE_URL, KAFKA_BROKERS, GEMINI_API_KEY
 ```
 
-## Block 1 smoke checks
-
-Run connectivity checks for Postgres (`SELECT 1`), optional schema apply when `APPLY_MIGRATIONS=true`, verification that `jobs` and `dead_letter_queue` exist, and Kafka (produce message when TLS certs are set):
+Verify connectivity:
 
 ```powershell
 cd backend
 go run ./cmd/smoke
 ```
 
-Expected output contains:
-- `smoke: tables jobs + dead_letter_queue present`
-- `smoke checks passed: postgres + kafka`
+Expect `smoke checks passed: postgres + kafka`.
 
-## Block 2 run flow
-
-Start API and worker in separate terminals:
-
-Terminal 1:
+Then start three processes in three terminals:
 
 ```powershell
-cd backend
-go run ./cmd/api
+# terminal 1 — API + WebSocket
+cd backend ; go run ./cmd/api
+
+# terminal 2 — worker
+cd backend ; go run ./cmd/worker
+
+# terminal 3 — UI
+cd frontend ; npm install ; npm run dev
 ```
 
-Terminal 2:
+Open <http://localhost:5173>, type a prompt, and watch the board update.
 
-```powershell
-cd backend
-go run ./cmd/worker
-```
-
-Create a dummy job (`general` is the seeded default label for a new user) from a third terminal. The `X-User-Id` header picks your row in `users`; the `job_type` must match one of the labels stored in your `dispatch_categories` (edit them from the Settings dialog in the UI, or via `PUT /settings/dispatch-categories`):
+To skip the UI and drive the API directly:
 
 ```powershell
 curl -X POST http://localhost:8080/jobs `
   -H "Content-Type: application/json" `
   -H "X-User-Id: demo" `
-  -d "{\"job_type\":\"general\",\"parameters\":{\"message\":\"hello flowbit\"}}"
-```
+  -d "{\"job_type\":\"echo\",\"parameters\":{\"message\":\"hello flowbit\"}}"
 
-Then fetch status:
-
-```powershell
 curl http://localhost:8080/jobs/<job-id>
 ```
 
-A successful end-to-end run transitions job status to `succeeded`.
+`X-User-Id` selects the row in `users`; `job_type` must match a label in that user's `dispatch_categories` (editable from the Settings dialog in the UI or via `PUT /settings/dispatch-categories`).
 
-## Block 5 live visualizer
-
-Start the API, worker, and frontend in separate terminals:
-
-Terminal 1:
-
-```powershell
-cd backend
-go run ./cmd/api
-```
-
-Terminal 2:
-
-```powershell
-cd backend
-go run ./cmd/worker
-```
-
-Terminal 3:
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Open `http://localhost:5173`, submit a prompt, and the board will update over WebSocket as the worker moves the job through each state. Configure `ALLOWED_ORIGINS` in the root `.env` when the UI is hosted anywhere other than the default localhost dev ports.
-
-## Automated tests
+## Tests
 
 From `backend/`:
 
@@ -104,21 +110,12 @@ From `backend/`:
 go test ./...
 ```
 
-This runs unit tests only (HTTP handlers with fakes, repo with pgxmock, worker job logic, Kafka TLS defaults, config defaults). No cloud credentials required.
+Unit-only — HTTP handlers with fakes, repo with pgxmock, worker job logic, Kafka TLS defaults. No cloud credentials required.
 
-## Contribution workflow
+<details>
+<summary>Optional: Postgres integration test (Docker)</summary>
 
-Flowbit uses a PR-first process:
-
-1. Create a dedicated branch from `main` for each change.
-2. Run relevant checks before pushing (backend minimum: `cd backend && go test ./...`).
-3. Open a PR targeting `main` and include summary + test plan.
-
-Detailed guidance: see `CONTRIBUTING.md`.
-
-**Kafka TLS:** Aiven Kafka requires TLS with certificate authentication. Place your `service.cert`, `service.key`, and `ca.pem` files in the project root or specify their paths via environment variables (use `../service.key` etc. when `go run` cwd is `backend/`). If smoke fails with **not a PEM private key**, `service.key` is missing or truncated—re-download it from Aiven (Kafka service → **Connection information**), next to `service.cert`.
-
-**Optional integration test (Docker):** Spins up Postgres via Testcontainers, applies schema, and round-trips `CreateJob` / `GetJobByID`.
+Spins up Postgres via Testcontainers, applies the schema, and round-trips `CreateJob` / `GetJobByID`.
 
 ```powershell
 cd backend
@@ -126,7 +123,12 @@ $env:INTEGRATION=1
 go test -tags=integration -v ./integration/...
 ```
 
-**Optional managed stack test (Neon + Kafka + worker, no HTTP):** Uses the same `.env` as smoke. Creates a `general` job row, publishes to Kafka, consumes with a one-off group at `LastOffset`, runs `worker.HandleJob`, asserts `succeeded`.
+</details>
+
+<details>
+<summary>Optional: full managed-stack E2E (Neon + Kafka + worker)</summary>
+
+Uses the same `.env` as smoke. Creates a `general` job, publishes to Kafka, consumes with a one-off group at `LastOffset`, runs `worker.HandleJob`, asserts `succeeded`.
 
 ```powershell
 cd backend
@@ -134,49 +136,39 @@ $env:E2E_STACK = "1"
 go test -tags=e2e -count=1 ./integration -run TestStack_genericJob_endToEnd -v
 ```
 
-Skip when `E2E_STACK` is unset so `go test ./...` stays credential-free.
+Skipped when `E2E_STACK` is unset, so `go test ./...` stays credential-free.
 
-**Block 2 manual E2E:** With `go run ./cmd/api` and `go run ./cmd/worker`, use the `curl` flow above; CI can script the same against a deployed URL when secrets exist.
+</details>
 
-## Deploy: API on Cloud Run
+## Deploy
 
-The root `Dockerfile` builds a multi-stage, distroless static image for `./cmd/api` (Go 1.25, CGO off, non-root user, listens on `8080`). The worker is not deployed here — it needs a steady consumer process (run `./cmd/worker` on Compute Engine e2-micro or similar), because Cloud Run scales to zero.
+The API ships as a distroless container built from the root [Dockerfile](backend/Dockerfile) and is designed for Cloud Run. The worker runs alongside on a long-lived host because Cloud Run scales to zero.
 
-### Cloud Build / Cloud Run wiring
+Full wiring (env vars, Secret Manager mounts for Aiven TLS, migration policy, WebSocket caveat, local Docker verify): [docs/deploy.md](docs/deploy.md).
 
-- **Build type:** Dockerfile, **Source location:** `/Dockerfile` (repo root).
-- **Container port:** `8080`.
-- **Plain env vars:**
-  - `API_ADDR=:8080`
-  - `APPLY_MIGRATIONS=false` (run schema apply once out-of-band; multiple instances racing `EnsureSchema` on cold start is bad)
-  - `ALLOWED_ORIGINS=<prod UI origin>`
-  - `KAFKA_TOPIC_JOBS=jobs`
-  - `GEMINI_MODEL` (optional)
-- **Secret Manager → env secrets:** `DATABASE_URL`, `KAFKA_BROKERS`, `GEMINI_API_KEY`.
-- **Secret Manager → mounted files** at `/secrets/`: `service.cert`, `service.key`, `ca.pem`. Then set:
-  - `KAFKA_CERT_FILE=/secrets/service.cert`
-  - `KAFKA_KEY_FILE=/secrets/service.key`
-  - `KAFKA_CA_FILE=/secrets/ca.pem`
+## Repository layout
 
-Absolute cert paths are used as-is by the config loader (no `.env` in the container).
-
-### Migrations
-
-Set `APPLY_MIGRATIONS=false` on Cloud Run. Apply schema once from a trusted host (local dev, or a one-off Cloud Run Job) against Neon before deploying, and again only when the schema changes.
-
-### WebSocket note
-
-Cloud Run supports WebSockets, but caps a single request at 60 minutes. The `/ws` visualizer stream will reconnect past that — acceptable for Flowbit, but worth knowing.
-
-### Verify locally
-
-```powershell
-docker build -t flowbit-api .
-docker run --rm -p 8080:8080 `
-  -e API_ADDR=:8080 `
-  -e APPLY_MIGRATIONS=false `
-  -e DATABASE_URL="<neon-url>" `
-  -e KAFKA_BROKERS="<broker:port>" `
-  flowbit-api
-curl http://localhost:8080/healthz
 ```
+backend/
+  cmd/{api,worker,smoke}    # binaries
+  internal/                 # api, dispatcher, kafka, queue, worker, repo, realtime, ...
+  integration/              # Testcontainers + managed-stack E2E
+frontend/
+  src/{components,hooks,jobs,api}
+docs/
+  00-vision-and-demo.md  10-architecture.md  20-stack-and-deployment.md
+  30-scheduler.md  40-ai-dispatcher.md  50-visualizer.md
+  60-observability-and-runbook.md  90-study-guide.md
+  deploy.md  BUILD-CHECKLIST.md
+```
+
+## Further reading
+
+- [Vision and demo](docs/00-vision-and-demo.md)
+- [Architecture](docs/10-architecture.md)
+- [Scheduler internals](docs/30-scheduler.md) — retries, backoff, DLQ
+- [AI dispatcher](docs/40-ai-dispatcher.md)
+- [Visualizer](docs/50-visualizer.md)
+- [Observability + runbook](docs/60-observability-and-runbook.md)
+- [Build checklist](docs/BUILD-CHECKLIST.md)
+- [Contributing](CONTRIBUTING.md)
