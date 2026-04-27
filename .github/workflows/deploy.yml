@@ -36,8 +36,8 @@ jobs:
       - name: Deploy Backend
         run: |
           cd backend
-          # We use '.' because we are already inside the backend directory
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend .
+          # Explicitly tell gcloud where the Dockerfile is located within the current context
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend --dockerfile=Dockerfile .
 
           # Now deploy that image to Cloud Run
           gcloud run deploy flowbit-backend \
