@@ -4,7 +4,6 @@ on:
     branches: [ main ]
 
 env:
-  # This forces actions using Node 20 to run on Node 24 instead
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
@@ -12,13 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
-      id-token: 'write' # Required for Workload Identity Federation
+      id-token: 'write'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Authenticate to Google Cloud without keys
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
@@ -26,35 +24,25 @@ jobs:
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
 
-      # 2. Google Cloud SDK
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # 3. BACKEND: Build & Deploy Go to Cloud Run
+      # 3. BACKEND: Build to the repo, deploy to the 'flowbit' service
       - name: Deploy Backend
         run: |
           cd backend
 
-          # Image path points to the 'flowbit' repo in Artifact Registry
-          IMAGE_PATH="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit/backend:latest"
+          # Correct Registry Name
+          IMAGE_PATH="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend:latest"
 
-          # Build and push to Artifact Registry
+          # 1. Build and push the container manually
           gcloud builds submit --tag $IMAGE_PATH .
 
+          # 2. Force the 'flowbit' service to use this new container image
           gcloud run deploy flowbit \
             --image $IMAGE_PATH \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated
-
-      # 4. FRONTEND: Build & Deploy to Firebase Hosting
-      - name: Deploy Frontend
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-          cd ..
-          # Use npx to ensure firebase-tools is available
-          npx firebase-tools deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }}
