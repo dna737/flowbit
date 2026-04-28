@@ -37,13 +37,14 @@ jobs:
         run: |
           cd backend
 
-          # Build and push to Artifact Registry instead of GCR
-          # Format: LOCATION-docker.pkg.dev/PROJECT-ID/REPOSITORY/IMAGE
-          gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend .
+          # Image path points to the 'flowbit' repo in Artifact Registry
+          IMAGE_PATH="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit/backend:latest"
 
-          # Now deploy that image to Cloud Run
-          gcloud run deploy flowbit-backend \
-            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend \
+          # Build and push to Artifact Registry
+          gcloud builds submit --tag $IMAGE_PATH .
+
+          gcloud run deploy flowbit \
+            --image $IMAGE_PATH \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated
