@@ -81,9 +81,17 @@ func (s *Server) Mount(mux *http.ServeMux) {
 }
 
 func (s *Server) Handler() http.Handler {
-	mux := http.NewServeMux()
-	s.Mount(mux)
-	return s.withCORS(s.withSession(mux))
+    mux := http.NewServeMux()
+    s.Mount(mux)
+    apiHandler := http.StripPrefix("/api", mux)
+    mainMux := http.NewServeMux()
+
+    // Main requests go in here
+    mainMux.Handle("/api/", apiHandler)
+
+    // This keeps Cloud Run happy
+    mainMux.HandleFunc("GET /healthz", s.HandleHealthz)
+    return s.withCORS(s.withSession(mainMux))
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
