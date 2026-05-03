@@ -2,6 +2,8 @@
 
 A distributed task queue built from scratch in Go (Kafka + Postgres), with a Gemini dispatcher that turns plain English into jobs and a live React pipeline visualizer.
 
+[![Deploy Flowbit Fullstack](https://github.com/dna737/flowbit/actions/workflows/deploy.yml/badge.svg)](https://github.com/dna737/flowbit/actions/workflows/deploy.yml)
+
 > **Live demo:** _coming soon_
 
 ![Flowbit visualizer](docs/screenshots/flowbit-visualizer.png)
