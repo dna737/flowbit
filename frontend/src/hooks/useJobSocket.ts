@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type Dispatch } from "react";
 
 import type { Job, JobsAction, SnapshotMessage } from "../jobs/types";
 
-const defaultWsUrl = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080/ws";
+const defaultWsUrl  = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws`;
 const maxReconnectDelayMs = 30000;
 
 export type ConnectionStatus =
