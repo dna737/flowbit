@@ -38,7 +38,7 @@ jobs:
           IMAGE_PATH="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend:latest"
 
           # 1. Build and push the container manually
-          gcloud builds submit --tag $IMAGE_PATH .
+          gcloud builds submit --tag $IMAGE_PATH ./backend
 
           # 2. Force the 'flowbit' service to use this new container image
           gcloud run deploy flowbit \
