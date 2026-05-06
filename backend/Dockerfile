@@ -11,13 +11,15 @@ RUN go mod download
 # Copy the rest of the backend source code
 COPY . ./
 
-# Build the binary
+# Build binaries
 # -trimpath and ldflags help reduce binary size and remove local file paths
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker
 
 # Use Google's distroless image for a tiny, secure runtime environment
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/api /api
+COPY --from=build /out/worker /worker
 
 # Cloud Run defaults to port 8080
 EXPOSE 8080
