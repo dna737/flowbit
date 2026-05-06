@@ -36,6 +36,7 @@ jobs:
           npm run build
         env:
           VITE_API_URL: ${{ secrets.BACKEND_API_URL }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
 
       - name: Deploy to Firebase
         run: |
