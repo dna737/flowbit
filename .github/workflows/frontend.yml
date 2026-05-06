@@ -23,7 +23,6 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          # This generates the credentials file required for the Firebase CLI to authenticate
           create_credentials_file: true
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
@@ -38,7 +37,9 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          # Now using your secret variable
+          # This line is mandatory for the action to start, 
+          # even when using Workload Identity.
+          firebaseServiceAccount: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
           projectId: ${{ secrets.GCP_PROJECT_ID }}
           channelId: live
           entryPoint: ./frontend
