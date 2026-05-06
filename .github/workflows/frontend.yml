@@ -22,6 +22,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
+          # This creates the credentials file Firebase needs automatically
+          create_credentials_file: true
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
 
@@ -30,12 +32,16 @@ jobs:
           cd frontend
           npm install
           npm run build
+        env:
+          # Inject your environment variables here
+          VITE_API_URL: ${{ secrets.BACKEND_API_URL }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-          projectId: ${{ secrets.GCP_PROJECT_ID }}
+          # IMPORTANT: We point to the project ID, and the action 
+          # uses the OIDC token from the 'auth' step above.
+          projectId: flowbit-fda6f
           channelId: live
           entryPoint: ./frontend
