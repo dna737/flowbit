@@ -23,23 +23,22 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          create_credentials_file: true
+          # This is the key: export_environment_variables allows 
+          # other tools (like Firebase) to see the login.
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+          export_environment_variables: true
 
       - name: Install and Build
         run: |
           cd frontend
           npm install
           npm run build
+        env:
+          VITE_API_URL: ${{ secrets.BACKEND_API_URL }}
 
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          # This line is mandatory for the action to start, 
-          # even when using Workload Identity.
-          firebaseServiceAccount: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-          projectId: ${{ secrets.GCP_PROJECT_ID }}
-          channelId: live
-          entryPoint: ./frontend
+      - name: Deploy to Firebase
+        run: |
+          cd frontend
+          # Use npx to run the firebase-tools directly using the GCloud auth
+          npx firebase-tools deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive
