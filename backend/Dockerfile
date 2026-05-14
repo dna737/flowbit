@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM golang:1.25-alpine AS build
+FROM golang:1.26.3-alpine AS build
 
 # Set the working directory inside the container
 WORKDIR /src
