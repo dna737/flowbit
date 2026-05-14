@@ -47,8 +47,8 @@ jobs:
             --cpu 1 \
             --memory 512Mi \
             --timeout 3600 \
-            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CERT_FILE=/secrets/service-cert,KAFKA_KEY_FILE=/secrets/service-key,KAFKA_CA_FILE=/secrets/ca-pem,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
-            --set-secrets "/secrets/service-cert=service-cert:latest,/secrets/service-key=service-key:latest,/secrets/ca-pem=ca-pem:latest"
+            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CERT_FILE=/secrets/cert/service.cert,KAFKA_KEY_FILE=/secrets/key/service.key,KAFKA_CA_FILE=/secrets/ca/ca.pem,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+            --set-secrets "/secrets/cert/service.cert=service-cert:latest,/secrets/key/service.key=service-key:latest,/secrets/ca/ca.pem=ca-pem:latest"
 
       - name: Deploy Worker Service
         run: |
@@ -64,6 +64,6 @@ jobs:
             --max-instances=1 \
             --cpu-always \
             --concurrency=1 \
-            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CONSUMER_GROUP=flowbit-workers,KAFKA_CERT_FILE=/secrets/service-cert,KAFKA_KEY_FILE=/secrets/service-key,KAFKA_CA_FILE=/secrets/ca-pem" \
-            --set-secrets "/secrets/service-cert=service-cert:latest,/secrets/service-key=service-key:latest,/secrets/ca-pem=ca-pem:latest" \
+            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CONSUMER_GROUP=flowbit-workers,KAFKA_CERT_FILE=/secrets/cert/service.cert,KAFKA_KEY_FILE=/secrets/key/service.key,KAFKA_CA_FILE=/secrets/ca/ca.pem" \
+            --set-secrets "/secrets/cert/service.cert=service-cert:latest,/secrets/key/service.key=service-key:latest,/secrets/ca/ca.pem=ca-pem:latest" \
             --command "/worker"
