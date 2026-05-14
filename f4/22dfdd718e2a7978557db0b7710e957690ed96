@@ -1,0 +1,20 @@
+.github/workflows/backend.yml
+  s_cf6a29c3492f4d::t_86164e38b57483 50-51
+  s_cf6a29c3492f4d::t_1a9f187e179bdd 67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f422dfdd718e2a7978557db0b7710e957690ed96",
+  "prompts": {},
+  "sessions": {
+    "s_cf6a29c3492f4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1dbafe723ffemrUg8mJbO6JvkS",
+        "model": "unknown"
+      },
+      "human_author": "dna737 <adnanhere27@gmail.com>"
+    }
+  }
+}
