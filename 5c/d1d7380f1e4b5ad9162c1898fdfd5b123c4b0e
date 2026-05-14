@@ -1,0 +1,23 @@
+examples/kafka/go.mod
+  s_751d470166b3a1::t_5e0506275e6e10 3
+backend/Dockerfile
+  s_751d470166b3a1::t_40fd5c204d879b 2
+backend/go.mod
+  s_751d470166b3a1::t_88d8f2bf32cc40 3,62-63,86,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "5cd1d7380f1e4b5ad9162c1898fdfd5b123c4b0e",
+  "prompts": {},
+  "sessions": {
+    "s_751d470166b3a1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1db297c6bffe4q5RX2b4Zy6K6l",
+        "model": "unknown"
+      },
+      "human_author": "dna737 <adnanhere27@gmail.com>"
+    }
+  }
+}
