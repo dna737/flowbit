@@ -5,6 +5,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  REGION: us-central1
+  IMAGE_PATH: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend:latest
 
 jobs:
   deploy:
@@ -30,20 +32,38 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # 3. BACKEND: Build to the repo, deploy to the 'flowbit' service
-      - name: Deploy Backend
+      - name: Build and Push Container
         run: |
           cd backend
-
-          # Correct Registry Name
-          IMAGE_PATH="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flowbit-repo/backend:latest"
-
-          # 1. Build and push the container manually
           gcloud builds submit --tag $IMAGE_PATH .
 
-          # 2. Force the 'flowbit' service to use this new container image
+      - name: Deploy API Service
+        run: |
           gcloud run deploy flowbit \
             --image $IMAGE_PATH \
-            --region us-central1 \
+            --region $REGION \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --cpu 1 \
+            --memory 512Mi \
+            --timeout 3600 \
+            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CERT_FILE=/secrets/service-cert,KAFKA_KEY_FILE=/secrets/service-key,KAFKA_CA_FILE=/secrets/ca-pem,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+            --set-secrets "/secrets/service-cert=service-cert:latest,/secrets/service-key=service-key:latest,/secrets/ca-pem=ca-pem:latest"
+
+      - name: Deploy Worker Service
+        run: |
+          gcloud run deploy flowbit-worker \
+            --image $IMAGE_PATH \
+            --region $REGION \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --cpu 1 \
+            --memory 512Mi \
+            --timeout 3600 \
+            --min-instances=1 \
+            --max-instances=1 \
+            --cpu-always \
+            --concurrency=1 \
+            --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CONSUMER_GROUP=flowbit-workers,KAFKA_CERT_FILE=/secrets/service-cert,KAFKA_KEY_FILE=/secrets/service-key,KAFKA_CA_FILE=/secrets/ca-pem" \
+            --set-secrets "/secrets/service-cert=service-cert:latest,/secrets/service-key=service-key:latest,/secrets/ca-pem=ca-pem:latest" \
+            --command "/worker"

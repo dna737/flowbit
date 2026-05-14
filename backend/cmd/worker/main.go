@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
@@ -74,6 +75,20 @@ func main() {
 		log.Fatalf("kafka reader error: %v", err)
 	}
 	defer reader.Close()
+
+	// Start a minimal HTTP server for Cloud Run health checks.
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		})
+		addr := cfg.APIAddr
+		log.Printf("worker health server listening on %s", addr)
+		if err := http.ListenAndServe(addr, mux); err != nil {
+			log.Printf("health server error: %v", err)
+		}
+	}()
 
 	log.Printf("worker consuming topic %q as group %q", cfg.KafkaTopicJobs, cfg.KafkaConsumerGrp)
 	var errCount int

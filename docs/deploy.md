@@ -1,26 +1,55 @@
 # Deploy
 
-The root [Dockerfile](../backend/Dockerfile) builds a multi-stage, distroless static image for `./cmd/api` (Go 1.25, CGO off, non-root user, listens on `8080`).
+The [Dockerfile](../backend/Dockerfile) builds a multi-stage, distroless static image containing both the **API** (`/api`) and **worker** (`/worker`) binaries (Go 1.25, CGO off, non-root user).
 
-The worker is **not** deployed to Cloud Run — it needs a steady consumer process (run `./cmd/worker` on Compute Engine `e2-micro` or similar), because Cloud Run scales to zero.
+Two Cloud Run services are deployed from the same image:
+- `flowbit` — API server (HTTPS + WebSocket), default entrypoint `/api`
+- `flowbit-worker` — Kafka consumer, entrypoint `/worker`
+
+The worker service uses `--min-instances=1 --cpu-always` so it never scales to zero and can process Kafka messages in the background.
 
 ## Cloud Run wiring
 
-- **Build type:** Dockerfile, **source location:** `/Dockerfile` (repo root)
-- **Container port:** `8080`
-- **Plain env vars:**
+- **Container port:** `8080` (both services)
+- **Environment variables (shared):**
   - `API_ADDR=:8080`
-  - `APPLY_MIGRATIONS=false` (apply schema once out-of-band; multiple instances racing `EnsureSchema` on cold start is bad)
-  - `ALLOWED_ORIGINS=<prod UI origin>`
+  - `APPLY_MIGRATIONS=false`
+  - `DATABASE_URL` — from GitHub secret
+  - `KAFKA_BROKERS` — from GitHub secret
   - `KAFKA_TOPIC_JOBS=jobs`
-  - `GEMINI_MODEL` (optional)
-- **Secret Manager → env secrets:** `DATABASE_URL`, `KAFKA_BROKERS`, `GEMINI_API_KEY`
-- **Secret Manager → mounted files** at `/secrets/`: `service.cert`, `service.key`, `ca.pem`. Then set:
-  - `KAFKA_CERT_FILE=/secrets/service.cert`
-  - `KAFKA_KEY_FILE=/secrets/service.key`
-  - `KAFKA_CA_FILE=/secrets/ca.pem`
+- **API additional env:** `ALLOWED_ORIGINS`, `GEMINI_API_KEY`
+- **Worker additional env:** `KAFKA_CONSUMER_GROUP=flowbit-workers`
+- **Secret Manager → mounted files** at `/secrets/`: `service-cert`, `service-key`, `ca-pem`. Then set:
+  - `KAFKA_CERT_FILE=/secrets/service-cert`
+  - `KAFKA_KEY_FILE=/secrets/service-key`
+  - `KAFKA_CA_FILE=/secrets/ca-pem`
 
-Absolute cert paths are used as-is by the config loader (no `.env` in the container).
+## One-time setup
+
+### 1. Grant the runtime service account access to cert secrets
+
+```powershell
+$PROJECT_ID = gcloud config get-value project
+$PROJECT_NUMBER = gcloud projects describe $PROJECT_ID --format="value(projectNumber)"
+$SA = "$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+
+foreach ($secret in @("service-cert","service-key","ca-pem")) {
+  gcloud secrets add-iam-policy-binding $secret `
+    --member="serviceAccount:$SA" `
+    --role="roles/secretmanager.secretAccessor"
+}
+```
+
+### 2. Add GitHub Actions secrets
+
+In your repo settings (**Settings → Secrets and variables → Actions**), add:
+- `DATABASE_URL` — your Neon Postgres connection string
+- `ALLOWED_ORIGINS` — your UI origin (e.g. `https://flowbit.vercel.app`)
+- `KAFKA_BROKERS` — your Aiven Kafka broker address
+- `GEMINI_API_KEY` (optional) — for the AI dispatch feature
+- `GCP_PROJECT_ID` — your GCP project ID
+- `GCP_PROJECT_NUMBER` — your GCP project number
+- `GCP_SERVICE_ACCOUNT_EMAIL` — the service account used by Workload Identity Federation
 
 ## Migrations
 
