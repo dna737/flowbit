@@ -1,0 +1,25 @@
+.github/workflows/backend.yml
+  s_cf6a29c3492f4d::t_0f41f0394bb353 8-9,35,40-41,44-55,57,59-69
+  s_cf6a29c3492f4d::t_03039bc407c68e 56
+backend/cmd/worker/main.go
+  s_cf6a29c3492f4d::t_007447d747365c 79-92
+  s_cf6a29c3492f4d::t_ceedbb8bf432e5 7
+docs/deploy.md
+  s_cf6a29c3492f4d::t_cd59be96612afe 3,5-9,13-14,16-18,20-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "77e585acb81edea93bdaf097d3adff21bf26226e",
+  "prompts": {},
+  "sessions": {
+    "s_cf6a29c3492f4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1dbafe723ffemrUg8mJbO6JvkS",
+        "model": "unknown"
+      },
+      "human_author": "dna737 <adnanhere27@gmail.com>"
+    }
+  }
+}
