@@ -1,0 +1,32 @@
+backend/cmd/worker/main.go
+  s_cf6a29c3492f4d::t_035c43a6927ba7 79-92
+  s_cf6a29c3492f4d::t_dfaa927051782e 7
+docs/deploy.md
+  s_cf6a29c3492f4d::t_451d93849ee20c 3,5-9,13-14,16,18-19,26-27,38,40
+  s_cf6a29c3492f4d::t_06fc49e945d6de 28,35,45
+  s_cf6a29c3492f4d::t_ab3c1cc8dd3553 29-34,36-37,39,41-44,46-51
+backend/Dockerfile
+  s_cf6a29c3492f4d::t_63007872bc3194 14-16,21,29
+.github/workflows/deploy.yml
+  s_cf6a29c3492f4d::t_30a1147bb361cf 52
+  s_cf6a29c3492f4d::t_c4564e862b4373 8-11,36,41-42,45-50,53-58,60-67,70
+  s_cf6a29c3492f4d::t_c09ac59d404008 51
+  s_cf6a29c3492f4d::t_a1b10f3521d23a 68
+  s_cf6a29c3492f4d::t_8427e974e6cbbd 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "760a4daeb12141b165e2a3e35f7d8061f2400e08",
+  "prompts": {},
+  "sessions": {
+    "s_cf6a29c3492f4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1dbafe723ffemrUg8mJbO6JvkS",
+        "model": "unknown"
+      },
+      "human_author": "dna737 <adnanhere27@gmail.com>"
+    }
+  }
+}
