@@ -67,3 +67,4 @@ jobs:
             --set-env-vars "^@^API_ADDR=:8080,APPLY_MIGRATIONS=false,DATABASE_URL=${{ secrets.DATABASE_URL }},KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }},KAFKA_TOPIC_JOBS=jobs,KAFKA_CONSUMER_GROUP=flowbit-workers,KAFKA_CERT_FILE=/secrets/cert/service.cert,KAFKA_KEY_FILE=/secrets/key/service.key,KAFKA_CA_FILE=/secrets/ca/ca.pem" \
             --set-secrets "/secrets/cert/service.cert=service-cert:latest,/secrets/key/service.key=service-key:latest,/secrets/ca/ca.pem=ca-pem:latest" \
             --command "/worker"
+            --update-env-vars="^~^ALLOWED_ORIGINS=https://flowbit-fda6f.web.app,https://flowbit-fda6f.firebaseapp.com"
