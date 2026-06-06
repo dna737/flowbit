@@ -9,8 +9,6 @@ A distributed task queue built from scratch in Go (Kafka + Postgres), with a Gem
 3. Dispatch tasks using a scheduler microservice (by clicking on the configure option):
    <img width="1859" height="961" alt="image" src="https://github.com/user-attachments/assets/21a8b469-2655-4031-afe9-d9a763896e50" />
 
-![Flowbit visualizer](docs/screenshots/flowbit-visualizer.png)
-
 ## What it does
 
 - **Plain English in, structured job out.** `POST /dispatch` with `"send an email to bob@example.com about tomorrow's launch"` and Gemini returns a typed job (`job_type`, `parameters`).
