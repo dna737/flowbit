@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type Dispatch } from "react";
 
+import type { AuthTokenGetter } from "../api/client";
 import type { Job, JobsAction, SnapshotMessage } from "../jobs/types";
 
-const wsBaseUrl = import.meta.env.VITE_WS_URL || `ws://localhost:8080`;
-const defaultWsUrl = `${wsBaseUrl}/api/ws`;
+const defaultWsUrl =
+  import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`;
 const maxReconnectDelayMs = 30000;
 
 export type ConnectionStatus =
@@ -12,14 +14,20 @@ export type ConnectionStatus =
   | "reconnecting"
   | "disconnected";
 
-export function useJobSocket(dispatch: Dispatch<JobsAction>) {
+export function useJobSocket(
+  dispatch: Dispatch<JobsAction>,
+  getToken: AuthTokenGetter,
+  enabled: boolean,
+) {
   const reconnectDelayRef = useRef(1000);
   const reconnectTimerRef = useRef<number | null>(null);
   const manualCloseRef = useRef(false);
-  const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [status, setStatus] = useState<ConnectionStatus>(enabled ? "connecting" : "disconnected");
 
   useEffect(() => {
     let socket: WebSocket | null = null;
+    let cancelled = false;
+    manualCloseRef.current = false;
 
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current !== null) {
@@ -28,11 +36,23 @@ export function useJobSocket(dispatch: Dispatch<JobsAction>) {
       }
     };
 
-    const connect = () => {
+    const connect = async () => {
+      if (!enabled) {
+        setStatus("disconnected");
+        return;
+      }
       clearReconnectTimer();
       setStatus(socket ? "reconnecting" : "connecting");
 
-      socket = new WebSocket(defaultWsUrl);
+      const token = await getToken();
+      if (cancelled || !token) {
+        setStatus("disconnected");
+        return;
+      }
+
+      const url = new URL(defaultWsUrl, window.location.href);
+      url.searchParams.set("token", token);
+      socket = new WebSocket(url.toString());
 
       socket.onopen = () => {
         reconnectDelayRef.current = 1000;
@@ -56,7 +76,7 @@ export function useJobSocket(dispatch: Dispatch<JobsAction>) {
         }
 
         setStatus("reconnecting");
-        reconnectTimerRef.current = window.setTimeout(connect, reconnectDelayRef.current);
+        reconnectTimerRef.current = window.setTimeout(() => void connect(), reconnectDelayRef.current);
         reconnectDelayRef.current = Math.min(
           reconnectDelayRef.current * 2,
           maxReconnectDelayMs,
@@ -68,14 +88,15 @@ export function useJobSocket(dispatch: Dispatch<JobsAction>) {
       };
     };
 
-    connect();
+    void connect();
 
     return () => {
+      cancelled = true;
       manualCloseRef.current = true;
       clearReconnectTimer();
       socket?.close();
     };
-  }, [dispatch]);
+  }, [dispatch, enabled, getToken]);
 
   return status;
 }

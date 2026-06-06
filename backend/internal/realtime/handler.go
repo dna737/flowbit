@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"flowbit/backend/internal/auth"
 	"flowbit/backend/internal/models"
-	"flowbit/backend/internal/session"
 
 	"github.com/coder/websocket"
 )
@@ -30,14 +30,18 @@ type ClientHub interface {
 	Unregister(*Client)
 }
 
+type AuthVerifier interface {
+	Verify(ctx context.Context, token string) (auth.Claims, error)
+}
+
 type snapshotMessage struct {
 	Type string       `json:"type"`
 	Jobs []models.Job `json:"jobs"`
 }
 
 // Handler returns the GET /ws handler. The user identity is resolved from the
-// server-issued session cookie already attached to the request context.
-func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.HandlerFunc {
+// Clerk session JWT supplied on the WebSocket request.
+func Handler(hub ClientHub, lister JobLister, allowedOrigins []string, verifier AuthVerifier) http.HandlerFunc {
 	originPatterns := allowedOriginPatterns(allowedOrigins)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -45,12 +49,16 @@ func Handler(hub ClientHub, lister JobLister, allowedOrigins []string) http.Hand
 			http.NotFound(w, r)
 			return
 		}
-
-		userID, ok := session.UserIDFromContext(r.Context())
-		if !ok {
-			http.Error(w, "session user id is missing", http.StatusUnauthorized)
+		if verifier == nil {
+			http.Error(w, "auth not configured", http.StatusUnauthorized)
 			return
 		}
+		claims, err := verifier.Verify(r.Context(), auth.TokenFromRequest(r))
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		userID := claims.Subject
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		jobs, err := lister.ListJobsByUser(ctx, userID, snapshotLimit)

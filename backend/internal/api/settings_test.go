@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"flowbit/backend/internal/auth"
 )
 
 type countingCategoryStore struct {
@@ -34,7 +36,7 @@ func TestHandlePutDispatchCategories_tooMany(t *testing.T) {
 	raw, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPut, "/settings/dispatch-categories", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")
-	req.AddCookie(&http.Cookie{Name: "flowbit_session", Value: "550e8400-e29b-41d4-a716-446655440099"})
+	req = req.WithContext(auth.ContextWithClaims(req.Context(), auth.Claims{Subject: "user_2abc123"}))
 	s.HandlePutDispatchCategories(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d: %s", rr.Code, rr.Body.String())

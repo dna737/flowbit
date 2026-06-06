@@ -2,9 +2,25 @@ import type { Job } from "../jobs/types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+export type AuthTokenGetter = () => Promise<string | null>;
+
 const withCredentials = {
   credentials: "include" as const,
 };
+
+async function authHeaders(
+  getToken: AuthTokenGetter,
+  headers: Record<string, string> = {},
+): Promise<Record<string, string>> {
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Sign in to continue");
+  }
+  return {
+    ...headers,
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 /** Best-effort ping so Postgres (e.g. Neon) wakes before heavier API calls. */
 export async function wakePostgres(): Promise<void> {
@@ -22,13 +38,13 @@ interface DispatchResponse {
   error?: string;
 }
 
-export async function postDispatch(prompt: string): Promise<Job> {
+export async function postDispatch(prompt: string, getToken: AuthTokenGetter): Promise<Job> {
   const response = await fetch(`${apiBaseUrl}/dispatch`, {
     ...withCredentials,
     method: "POST",
-    headers: {
+    headers: await authHeaders(getToken, {
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({ prompt }),
   });
 
@@ -40,9 +56,10 @@ interface CategoriesBody {
   error?: string;
 }
 
-export async function getDispatchCategories(): Promise<string[]> {
+export async function getDispatchCategories(getToken: AuthTokenGetter): Promise<string[]> {
   const response = await fetch(`${apiBaseUrl}/settings/dispatch-categories`, {
     ...withCredentials,
+    headers: await authHeaders(getToken),
   });
   const body = (await response.json()) as CategoriesBody;
   if (!response.ok) {
@@ -55,14 +72,16 @@ export async function getDispatchCategories(): Promise<string[]> {
   return Array.isArray(body.categories) ? body.categories : [];
 }
 
-export async function putDispatchCategories(categories: string[]): Promise<string[]> {
-  console.log("put", categories);
+export async function putDispatchCategories(
+  categories: string[],
+  getToken: AuthTokenGetter,
+): Promise<string[]> {
   const response = await fetch(`${apiBaseUrl}/settings/dispatch-categories`, {
     ...withCredentials,
     method: "PUT",
-    headers: {
+    headers: await authHeaders(getToken, {
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({ categories }),
   });
   const body = (await response.json()) as CategoriesBody;
@@ -79,13 +98,14 @@ export async function putDispatchCategories(categories: string[]): Promise<strin
 export async function postJob(
   type: string,
   params: Record<string, unknown>,
+  getToken: AuthTokenGetter,
 ): Promise<Job> {
   const response = await fetch(`${apiBaseUrl}/jobs`, {
     ...withCredentials,
     method: "POST",
-    headers: {
+    headers: await authHeaders(getToken, {
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({ job_type: type, parameters: params }),
   });
 

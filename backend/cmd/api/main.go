@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"flowbit/backend/internal/api"
+	"flowbit/backend/internal/auth"
 	"flowbit/backend/internal/config"
 	"flowbit/backend/internal/db"
 	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/kafka"
 	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
-	"flowbit/backend/internal/session"
 )
 
 func main() {
@@ -42,6 +42,14 @@ func main() {
 
 	jobsRepo := repo.NewJobsRepo(pool)
 	usersRepo := repo.NewUsersRepo(pool)
+	authVerifier, err := auth.NewVerifier(auth.Config{
+		JWKSURL:           cfg.ClerkJWKSURL,
+		Issuer:            cfg.ClerkIssuer,
+		AuthorizedParties: cfg.ClerkAuthorizedParties,
+	})
+	if err != nil {
+		log.Fatalf("clerk auth error: %v", err)
+	}
 	hub := realtime.NewHub()
 	go hub.Run(ctx)
 	go realtime.Listen(ctx, cfg.DatabaseURL, hub, jobsRepo)
@@ -74,10 +82,11 @@ func main() {
 		Publisher:      kafkaJobPublisher{writer: writer},
 		AIDispatcher:   aiDispatcher,
 		Categories:     usersRepo,
+		Users:          usersRepo,
 		Hub:            hub,
 		Lister:         jobsRepo,
 		AllowedOrigins: cfg.AllowedOrigins,
-		Sessions:       session.NewManager(),
+		Auth:           authVerifier,
 		PostgresPing:   pool.Ping,
 	}
 

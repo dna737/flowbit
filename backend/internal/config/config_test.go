@@ -5,6 +5,7 @@ import "testing"
 func TestLoad_KafkaCertFiles_defaults(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost/db?sslmode=disable")
 	t.Setenv("KAFKA_BROKERS", "localhost:9092")
+	t.Setenv("CLERK_ISSUER", "https://example.clerk.accounts.dev")
 	// Clear cert file env vars to test defaults
 	t.Setenv("KAFKA_CERT_FILE", "")
 	t.Setenv("KAFKA_KEY_FILE", "")
@@ -30,6 +31,7 @@ func TestLoad_KafkaCertFiles_defaults(t *testing.T) {
 func TestLoad_KafkaCertFiles_custom(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost/db?sslmode=disable")
 	t.Setenv("KAFKA_BROKERS", "localhost:9092")
+	t.Setenv("CLERK_ISSUER", "https://example.clerk.accounts.dev")
 	t.Setenv("KAFKA_CERT_FILE", "/path/to/custom.cert")
 	t.Setenv("KAFKA_KEY_FILE", "/path/to/custom.key")
 	t.Setenv("KAFKA_CA_FILE", "/path/to/custom-ca.pem")
@@ -53,6 +55,7 @@ func TestLoad_KafkaCertFiles_custom(t *testing.T) {
 func TestLoad_AllowedOrigins_defaults(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost/db?sslmode=disable")
 	t.Setenv("KAFKA_BROKERS", "localhost:9092")
+	t.Setenv("CLERK_ISSUER", "https://example.clerk.accounts.dev")
 	t.Setenv("ALLOWED_ORIGINS", "")
 
 	cfg, err := Load()

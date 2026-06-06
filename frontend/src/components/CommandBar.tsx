@@ -17,7 +17,12 @@ import {
   Typography,
 } from "@mui/material";
 
-import { getDispatchCategories, postDispatch, putDispatchCategories } from "../api/client";
+import {
+  getDispatchCategories,
+  postDispatch,
+  putDispatchCategories,
+  type AuthTokenGetter,
+} from "../api/client";
 import {
   CLIENT_JOB_ID_PREFIX,
   FLOWBIT_PROMPT_PARAM,
@@ -29,6 +34,8 @@ import { InfoIcon, SendIcon, TerminalIcon, XIcon } from "./icons";
 
 interface CommandBarProps {
   dispatchJobs: Dispatch<JobsAction>;
+  getAuthToken: AuthTokenGetter;
+  isSignedIn: boolean;
   onWatchlistPrepend: (jobId: string, prompt: string) => void;
   onWatchlistReplaceJobId: (fromId: string, toId: string) => void;
 }
@@ -66,6 +73,8 @@ function dedupeCategories(next: string, list: string[]): string[] {
 
 export function CommandBar({
   dispatchJobs,
+  getAuthToken,
+  isSignedIn,
   onWatchlistPrepend,
   onWatchlistReplaceJobId,
 }: CommandBarProps) {
@@ -83,16 +92,20 @@ export function CommandBar({
     setSettingsLoadError(null);
     setSettingsLoading(true);
     try {
-      const list = await getDispatchCategories();
+      const list = await getDispatchCategories(getAuthToken);
       setCategories(list);
     } catch (e) {
       setSettingsLoadError(e instanceof Error ? e.message : "Failed to load categories");
     } finally {
       setSettingsLoading(false);
     }
-  }, []);
+  }, [getAuthToken]);
 
   const openSettings = () => {
+    if (!isSignedIn) {
+      setError("Sign in to configure job labels");
+      return;
+    }
     setSettingsOpen(true);
     setCategoryInput("");
     setSettingsSaveError(null);
@@ -103,7 +116,7 @@ export function CommandBar({
     setSettingsSaveError(null);
     setSettingsLoading(true);
     try {
-      const saved = await putDispatchCategories(categories);
+      const saved = await putDispatchCategories(categories, getAuthToken);
       setCategories(saved);
       setSettingsOpen(false);
     } catch (e) {
@@ -121,6 +134,10 @@ export function CommandBar({
   const handleSubmit = async () => {
     const trimmed = prompt.trim();
     if (!trimmed) return;
+    if (!isSignedIn) {
+      setError("Sign in to dispatch jobs");
+      return;
+    }
 
     const clientId = `${CLIENT_JOB_ID_PREFIX}${crypto.randomUUID()}`;
     const pendingJob = makeClientPendingJob(clientId, trimmed);
@@ -130,7 +147,7 @@ export function CommandBar({
     setError(null);
 
     try {
-      const job = await postDispatch(trimmed);
+      const job = await postDispatch(trimmed, getAuthToken);
       dispatchJobs({ type: "REMOVE", id: clientId });
       dispatchJobs({ type: "UPSERT", job });
       onWatchlistReplaceJobId(clientId, job.id);
@@ -171,9 +188,14 @@ export function CommandBar({
             handleSubmit();
           }
         }}
-        placeholder="send an email to bob@example.com about tomorrow's launch"
+        placeholder={
+          isSignedIn
+            ? "send an email to bob@example.com about tomorrow's launch"
+            : "Sign in to dispatch jobs"
+        }
         fullWidth
         size="small"
+        disabled={!isSignedIn}
         sx={{ flex: 1, minWidth: 0 }}
         InputProps={{
           startAdornment: (
@@ -221,7 +243,7 @@ export function CommandBar({
       <Button
         variant="contained"
         onClick={handleSubmit}
-        disabled={!prompt.trim()}
+        disabled={!isSignedIn || !prompt.trim()}
         startIcon={<SendIcon />}
         sx={{
           height: 40,
@@ -237,6 +259,7 @@ export function CommandBar({
       <Button
         variant="outlined"
         onClick={openSettings}
+        disabled={!isSignedIn}
         sx={{
           height: 40,
           px: 2,

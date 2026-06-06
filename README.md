@@ -14,6 +14,7 @@ A distributed task queue built from scratch in Go (Kafka + Postgres), with a Gem
 - **Durable queue.** Job state lives in Postgres (Neon); Kafka (Aiven) carries the work. Crash a worker mid-job and the next consumer picks it up.
 - **Retries + dead-letter queue.** Up to 3 attempts with exponential backoff on Kafka read errors; final failures land in `dead_letter_queue` and stay there.
 - **Live pipeline view.** The React UI subscribes over WebSocket and animates each job through `pending → running → retrying → succeeded / failed`, with a metrics strip and a DLQ panel.
+- **SSO-ready auth.** Clerk powers sign-in and JWT verification so every job, setting, and live WebSocket event is scoped to the signed-in user.
 - **Pluggable handlers.** `echo`, `email`, `image_resize` ship as job types; `fail` is built in for chaos testing the retry/DLQ paths.
 
 ## Architecture
@@ -94,15 +95,18 @@ Open <http://localhost:5173>, type a prompt, and watch the board update.
 To skip the UI and drive the API directly:
 
 ```powershell
+$token = "<Clerk session JWT>"
+
 curl -X POST http://localhost:8080/jobs `
   -H "Content-Type: application/json" `
-  -H "X-User-Id: demo" `
+  -H "Authorization: Bearer $token" `
   -d "{\"job_type\":\"echo\",\"parameters\":{\"message\":\"hello flowbit\"}}"
 
-curl http://localhost:8080/jobs/<job-id>
+curl http://localhost:8080/jobs/<job-id> `
+  -H "Authorization: Bearer $token"
 ```
 
-`X-User-Id` selects the row in `users`; `job_type` must match a label in that user's `dispatch_categories` (editable from the Settings dialog in the UI or via `PUT /settings/dispatch-categories`).
+The Clerk JWT `sub` selects the row in `users`; `job_type` must match a label in that user's `dispatch_categories` (editable from the Settings dialog in the UI or via `PUT /settings/dispatch-categories`).
 
 ## Tests
 

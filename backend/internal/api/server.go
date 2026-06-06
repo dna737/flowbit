@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"flowbit/backend/internal/auth"
 	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/models"
 	"flowbit/backend/internal/queue"
 	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
-	"flowbit/backend/internal/session"
 )
 
 // JobStore is the persistence surface needed by the HTTP API.
@@ -46,16 +46,25 @@ type Hub interface {
 	BroadcastToUser(userID string, payload []byte)
 }
 
+type AuthVerifier interface {
+	Verify(ctx context.Context, token string) (auth.Claims, error)
+}
+
+type UserStore interface {
+	UpsertUser(ctx context.Context, claims auth.Claims) error
+}
+
 // Server wires HTTP handlers to a store and publisher.
 type Server struct {
 	Store          JobStore
 	Publisher      JobPublisher
 	AIDispatcher   AIDispatcher
 	Categories     CategoryStore
+	Users          UserStore
 	Hub            Hub
 	Lister         realtime.JobLister
 	AllowedOrigins []string
-	Sessions       *session.Manager
+	Auth           AuthVerifier
 	// PostgresPing checks database connectivity (e.g. pgxpool.Ping). Used by GET /readyz
 	// to wake idle serverless computes. If nil, /readyz returns 503.
 	PostgresPing func(context.Context) error
@@ -76,22 +85,22 @@ func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /settings/dispatch-categories", s.HandleGetDispatchCategories)
 	mux.HandleFunc("PUT /settings/dispatch-categories", s.HandlePutDispatchCategories)
 	if s.Hub != nil && s.Lister != nil {
-		mux.Handle("GET /ws", realtime.Handler(s.Hub, s.Lister, s.AllowedOrigins))
+		mux.Handle("GET /ws", realtime.Handler(s.Hub, s.Lister, s.AllowedOrigins, s.Auth))
 	}
 }
 
 func (s *Server) Handler() http.Handler {
-    mux := http.NewServeMux()
-    s.Mount(mux)
-    apiHandler := http.StripPrefix("/api", mux)
-    mainMux := http.NewServeMux()
+	mux := http.NewServeMux()
+	s.Mount(mux)
+	apiHandler := http.StripPrefix("/api", mux)
+	mainMux := http.NewServeMux()
 
-    // Main requests go in here
-    mainMux.Handle("/api/", apiHandler)
+	// Main requests go in here
+	mainMux.Handle("/api/", s.withAuth(apiHandler))
 
-    // This keeps Cloud Run happy
-    mainMux.HandleFunc("GET /healthz", s.HandleHealthz)
-    return s.withCORS(s.withSession(mainMux))
+	// This keeps Cloud Run happy
+	mainMux.HandleFunc("GET /healthz", s.HandleHealthz)
+	return s.withCORS(mainMux)
 }
 
 func (s *Server) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -232,6 +241,11 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		// 1. Always set Vary: Origin to prevent CDN caching issues
 		w.Header().Set("Vary", "Origin")
 
+		if isWebSocketUpgrade(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
 
 		// If there is no origin, it's a same-origin or non-browser request.
@@ -260,4 +274,16 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	if !strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket") {
+		return false
+	}
+	for _, token := range strings.Split(r.Header.Get("Connection"), ",") {
+		if strings.EqualFold(strings.TrimSpace(token), "upgrade") {
+			return true
+		}
+	}
+	return false
 }

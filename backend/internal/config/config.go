@@ -25,13 +25,18 @@ type Config struct {
 	// GeminiFallbacks is a CSV list of models to try if the primary returns a retryable
 	// error (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED). Tried in order.
 	GeminiFallbacks []string // from env GEMINI_MODEL_FALLBACKS
+	// Clerk JWT verification. Set CLERK_ISSUER to derive the JWKS URL automatically,
+	// or set CLERK_JWKS_URL explicitly.
+	ClerkIssuer            string
+	ClerkJWKSURL           string
+	ClerkAuthorizedParties []string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
 		APIAddr:        getenv("API_ADDR", ":8080"),
 		DatabaseURL:    getenv("DATABASE_URL", ""),
-		AllowedOrigins: splitCSV(getenv("ALLOWED_ORIGINS", "")),
+		AllowedOrigins: splitCSV(getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
 		KafkaBrokers:   splitCSV(os.Getenv("KAFKA_BROKERS")),
 		KafkaTopicJobs: getenv("KAFKA_TOPIC_JOBS", "jobs"),
 		// Aiven TLS certificate files — empty by default (TLS opt-in).
@@ -44,6 +49,14 @@ func Load() (Config, error) {
 		GeminiAPIKey:     getenv("GEMINI_API_KEY", ""),
 		GeminiModel:      getenv("GEMINI_MODEL", "gemini-flash-latest"),
 		GeminiFallbacks:  splitCSV(getenv("GEMINI_MODEL_FALLBACKS", "gemini-2.5-flash,gemini-2.5-pro,gemini-2.0-flash,gemini-2.0-flash-lite")),
+		ClerkIssuer:      strings.TrimRight(getenv("CLERK_ISSUER", ""), "/"),
+		ClerkJWKSURL:     getenv("CLERK_JWKS_URL", ""),
+		ClerkAuthorizedParties: splitCSV(
+			getenv("CLERK_AUTHORIZED_PARTIES", ""),
+		),
+	}
+	if cfg.ClerkJWKSURL == "" && cfg.ClerkIssuer != "" {
+		cfg.ClerkJWKSURL = cfg.ClerkIssuer + "/.well-known/jwks.json"
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -51,6 +64,9 @@ func Load() (Config, error) {
 	}
 	if len(cfg.KafkaBrokers) == 0 {
 		return Config{}, errors.New("KAFKA_BROKERS is required")
+	}
+	if cfg.ClerkJWKSURL == "" {
+		return Config{}, errors.New("CLERK_JWKS_URL or CLERK_ISSUER is required")
 	}
 	return cfg, nil
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"flowbit/backend/internal/auth"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -20,6 +23,29 @@ type UsersRepo struct {
 
 func NewUsersRepo(pool dbPool) *UsersRepo {
 	return &UsersRepo{pool: pool}
+}
+
+// UpsertUser records Clerk identity/profile claims without changing the user's
+// dispatch_categories settings.
+func (r *UsersRepo) UpsertUser(ctx context.Context, claims auth.Claims) error {
+	userID := strings.TrimSpace(claims.Subject)
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO users (id, email, first_name, last_name, image_url)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (id) DO UPDATE SET
+			email = EXCLUDED.email,
+			first_name = EXCLUDED.first_name,
+			last_name = EXCLUDED.last_name,
+			image_url = EXCLUDED.image_url,
+			updated_at = NOW()
+	`, userID, nullIfEmpty(claims.Email), nullIfEmpty(claims.FirstName), nullIfEmpty(claims.LastName), nullIfEmpty(claims.ImageURL))
+	if err != nil {
+		return fmt.Errorf("upsert user: %w", err)
+	}
+	return nil
 }
 
 // GetCategories returns stored category labels for userID. When no users row
@@ -70,4 +96,12 @@ func (r *UsersRepo) SetCategories(ctx context.Context, userID string, categories
 		return fmt.Errorf("set users: %w", err)
 	}
 	return nil
+}
+
+func nullIfEmpty(value string) any {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }

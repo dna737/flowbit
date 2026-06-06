@@ -1,5 +1,6 @@
 import { Box, Stack } from "@mui/material";
 
+import { AuthControls } from "./AuthControls";
 import { ConnectionBadge } from "./ConnectionBadge";
 import { MetricTile } from "./MetricTile";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
@@ -64,8 +65,9 @@ export function MetricsStrip({
         accent="failure"
       />
       </Box>
-      <Stack alignItems="flex-end" justifyContent="center">
+      <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={1.5}>
         <ConnectionBadge status={connectionStatus} />
+        <AuthControls />
       </Stack>
     </Box>
   );

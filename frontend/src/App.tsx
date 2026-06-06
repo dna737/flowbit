@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useAuth } from "@clerk/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { wakePostgres } from "./api/client";
@@ -29,9 +30,11 @@ export default function App() {
 }
 
 function Dashboard() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { jobs } = useJobsState();
   const dispatch = useJobsDispatch();
-  const connectionStatus = useJobSocket(dispatch);
+  const authReady = isLoaded && !!isSignedIn;
+  const connectionStatus = useJobSocket(dispatch, getToken, authReady);
 
   const [watchlist, setWatchlist] = useState<DispatchWatchlistEntry[]>(() =>
     loadWatchlistFromSession(),
@@ -78,6 +81,8 @@ function Dashboard() {
       </Box>
       <CommandBar
         dispatchJobs={dispatch}
+        getAuthToken={getToken}
+        isSignedIn={authReady}
         onWatchlistPrepend={(jobId, prompt) =>
           setWatchlist((current) => prependWatchlistEntry(current, jobId, prompt))
         }

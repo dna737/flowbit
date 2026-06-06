@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"flowbit/backend/internal/auth"
 	"flowbit/backend/internal/dispatcher"
 	"flowbit/backend/internal/models"
 )
@@ -39,9 +40,9 @@ func (f *fakeCategoryStore) SetCategories(_ context.Context, _ string, _ []strin
 	return nil
 }
 
-func withSession(req *http.Request) *http.Request {
-	req.AddCookie(&http.Cookie{Name: "flowbit_session", Value: "550e8400-e29b-41d4-a716-446655440099"})
-	return req
+func withAuthUser(req *http.Request) *http.Request {
+	claims := auth.Claims{Subject: "user_2abc123"}
+	return req.WithContext(auth.ContextWithClaims(req.Context(), claims))
 }
 
 func TestHandleDispatch_nilDispatcher(t *testing.T) {
@@ -62,7 +63,7 @@ func TestHandleDispatch_emptyPrompt(t *testing.T) {
 		Categories:   &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"  "}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
@@ -79,7 +80,7 @@ func TestHandleDispatch_dispatcherError(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("want 502 got %d", rr.Code)
@@ -115,7 +116,7 @@ func TestHandleDispatch_success(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"send email to bob@example.com"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
@@ -146,7 +147,7 @@ func TestHandleDispatch_emptyJobTypes(t *testing.T) {
 		Categories:   &fakeCategoryStore{list: []string{}},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"anything"}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/dispatch", bytes.NewBufferString(`{"prompt":"anything"}`)))
 	s.HandleDispatch(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d: %s", rr.Code, rr.Body.String())

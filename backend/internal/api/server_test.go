@@ -7,13 +7,17 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"flowbit/backend/internal/auth"
 	"flowbit/backend/internal/models"
 	"flowbit/backend/internal/queue"
 	"flowbit/backend/internal/realtime"
 	"flowbit/backend/internal/repo"
+
+	"github.com/coder/websocket"
 )
 
 type fakeStore struct {
@@ -71,6 +75,18 @@ func (fakeHub) Register(*realtime.Client)      {}
 func (fakeHub) Unregister(*realtime.Client)    {}
 func (fakeHub) BroadcastToUser(string, []byte) {}
 
+type fakeAuth struct {
+	claims auth.Claims
+	err    error
+}
+
+func (f fakeAuth) Verify(context.Context, string) (auth.Claims, error) {
+	if f.err != nil {
+		return auth.Claims{}, f.err
+	}
+	return f.claims, nil
+}
+
 func TestHandleHealthz(t *testing.T) {
 	s := &Server{}
 	rr := httptest.NewRecorder()
@@ -115,45 +131,20 @@ func TestHandleReadyz_pingError(t *testing.T) {
 	}
 }
 
-func TestHandleCreateJob_createsSessionWhenMissing(t *testing.T) {
-	job := models.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440010",
-		JobType:    "general",
-		Parameters: map[string]any{},
-		Status:     models.JobStatusPending,
-		CreatedAt:  time.Now().UTC(),
-		UpdatedAt:  time.Now().UTC(),
-	}
-	s := &Server{
-		Store: &fakeStore{
-			createJob: func(_ context.Context, userID, jobType string, _ map[string]any, _ string) (models.Job, error) {
-				if userID == "" {
-					t.Fatal("expected minted session user id")
-				}
-				if jobType != "general" {
-					t.Fatalf("unexpected job type %q", jobType)
-				}
-				return job, nil
-			},
-		},
-		Publisher:  &fakePublisher{},
-		Categories: &fakeCategoryStore{},
-	}
+func TestHandleCreateJob_requiresAuthWhenMissing(t *testing.T) {
+	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`))
 	s.HandleCreateJob(rr, req)
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("want 201 got %d body=%s", rr.Code, rr.Body.String())
-	}
-	if cookies := rr.Result().Cookies(); len(cookies) == 0 {
-		t.Fatal("expected session cookie to be set")
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401 got %d body=%s", rr.Code, rr.Body.String())
 	}
 }
 
 func TestHandleCreateJob_invalidJSON(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -164,7 +155,7 @@ func TestHandleCreateJob_missingJobType(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	body := `{"parameters":{}}`
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d", rr.Code)
@@ -176,7 +167,7 @@ func TestHandleCreateJob_missingJobType(t *testing.T) {
 func TestHandleCreateJob_disallowedJobType(t *testing.T) {
 	s := &Server{Store: &fakeStore{}, Publisher: &fakePublisher{}, Categories: &fakeCategoryStore{}}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"rm-rf"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400 got %d body=%s", rr.Code, rr.Body.String())
@@ -198,7 +189,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 	s := &Server{
 		Store: &fakeStore{
 			createJob: func(_ context.Context, userID, jobType string, parameters map[string]any, status string) (models.Job, error) {
-				if userID != "550e8400-e29b-41d4-a716-446655440099" {
+				if userID != "user_2abc123" {
 					t.Fatalf("unexpected userID %q", userID)
 				}
 				if jobType != "general" || status != models.JobStatusPending {
@@ -217,7 +208,7 @@ func TestHandleCreateJob_success(t *testing.T) {
 	}
 	body := `{"job_type":"general","parameters":{"k":"v"}}`
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(body)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("want 201 got %d: %s", rr.Code, rr.Body.String())
@@ -251,7 +242,7 @@ func TestHandleCreateJob_publishFails_marksFailed(t *testing.T) {
 		Categories: &fakeCategoryStore{},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`)))
+	req := withAuthUser(httptest.NewRequest(http.MethodPost, "/jobs", bytes.NewBufferString(`{"job_type":"general"}`)))
 	s.HandleCreateJob(rr, req)
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("want 500 got %d", rr.Code)
@@ -270,7 +261,7 @@ func TestHandleGetJob_notFound(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodGet, "/jobs/x", nil))
+	req := withAuthUser(httptest.NewRequest(http.MethodGet, "/jobs/x", nil))
 	req.SetPathValue("id", "550e8400-e29b-41d4-a716-446655440001")
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -291,7 +282,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 	s := &Server{
 		Store: &fakeStore{
 			getJob: func(_ context.Context, userID, id string) (models.Job, error) {
-				if userID != "550e8400-e29b-41d4-a716-446655440099" {
+				if userID != "user_2abc123" {
 					t.Fatalf("userID %q", userID)
 				}
 				if id != want.ID {
@@ -302,7 +293,7 @@ func TestHandleGetJob_ok(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req := withSession(httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil))
+	req := withAuthUser(httptest.NewRequest(http.MethodGet, "/jobs/"+want.ID, nil))
 	req.SetPathValue("id", want.ID)
 	s.HandleGetJob(rr, req)
 	if rr.Code != http.StatusOK {
@@ -347,9 +338,6 @@ func TestServerHandler_setsCORSHeadersForAllowedOrigin(t *testing.T) {
 	if rr.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Fatalf("unexpected allow origin header: %q", rr.Header().Get("Access-Control-Allow-Origin"))
 	}
-	if rr.Header().Values("Set-Cookie") == nil {
-		t.Fatal("expected session cookie on handled request")
-	}
 }
 
 func TestServerHandler_handlesPreflight(t *testing.T) {
@@ -366,6 +354,55 @@ func TestServerHandler_handlesPreflight(t *testing.T) {
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("want 204 got %d", rr.Code)
 	}
+}
+
+func TestServerHandler_webSocketUpgradeBypassesCORSOriginGate(t *testing.T) {
+	s := &Server{
+		Hub:            fakeHub{},
+		Lister:         &fakeLister{},
+		AllowedOrigins: []string{"http://localhost:5173"},
+		Auth:           fakeAuth{claims: auth.Claims{Subject: "user_2abc123"}},
+	}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/ws?token=test", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+	req.Header.Set("Connection", "keep-alive, Upgrade")
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Sec-WebSocket-Version", "13")
+	req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Body.String() == "{\"error\":\"origin not allowed\"}\n" {
+		t.Fatal("expected websocket handler to own origin rejection")
+	}
+}
+
+func TestServerHandler_webSocketUpgradeAllowedOrigin(t *testing.T) {
+	s := &Server{
+		Hub:            fakeHub{},
+		Lister:         &fakeLister{},
+		AllowedOrigins: []string{"http://localhost:5173"},
+		Auth:           fakeAuth{claims: auth.Claims{Subject: "user_2abc123"}},
+	}
+	server := httptest.NewServer(s.Handler())
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/ws?token=test"
+	conn, resp, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"http://localhost:5173"}},
+	})
+	if err != nil {
+		if resp != nil {
+			t.Fatalf("websocket dial failed with status %d: %v", resp.StatusCode, err)
+		}
+		t.Fatalf("websocket dial failed: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
 }
 
 func TestServerMount_omitsWebSocketRouteWithoutRealtimeDeps(t *testing.T) {
